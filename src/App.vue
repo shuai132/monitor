@@ -8,59 +8,99 @@ interface ProcessInfo {
   cpu_usage: number;
 }
 
+const greetMsg = ref("");
+const name = ref("");
 const processes = ref<ProcessInfo[]>([]);
-const loading = ref(false);
-const error = ref("");
-const autoRefresh = ref(true);
+const isAutoRefresh = ref(false);
+const isLoading = ref(false);
+const message = ref("");
 let refreshInterval: number | null = null;
 
-async function fetchTopCPUProcesses() {
+async function greet() {
+  greetMsg.value = await invoke("greet", { name: name.value });
+}
+
+async function getTopProcesses() {
+  isLoading.value = true;
   try {
-    loading.value = true;
-    error.value = "";
     const result = await invoke<ProcessInfo[]>("get_top_cpu_processes");
     processes.value = result;
-  } catch (err) {
-    error.value = `获取进程信息失败: ${err}`;
-    console.error("获取CPU进程信息失败:", err);
+  } catch (error) {
+    console.error("获取进程信息失败:", error);
+    processes.value = [];
   } finally {
-    loading.value = false;
+    isLoading.value = false;
   }
 }
 
-function startAutoRefresh() {
-  if (refreshInterval) return;
-
-  refreshInterval = setInterval(() => {
-    if (autoRefresh.value) {
-      fetchTopCPUProcesses();
-    }
-  }, 2000); // 每2秒刷新一次
+async function terminateProcess(pid: number) {
+  try {
+    const result = await invoke<string>("terminate_process", { pid });
+    message.value = result;
+    setTimeout(() => message.value = "", 3000);
+    // 刷新进程列表
+    await getTopProcesses();
+  } catch (error) {
+    message.value = `终止进程失败: ${error}`;
+    setTimeout(() => message.value = "", 3000);
+  }
 }
 
-function stopAutoRefresh() {
-  if (refreshInterval) {
-    clearInterval(refreshInterval);
-    refreshInterval = null;
+async function forceKillProcess(pid: number) {
+  if (!confirm(`确定要强制终止进程 ${pid} 吗？这可能导致数据丢失。`)) {
+    return;
+  }
+
+  try {
+    const result = await invoke<string>("force_kill_process", { pid });
+    message.value = result;
+    setTimeout(() => message.value = "", 3000);
+    // 刷新进程列表
+    await getTopProcesses();
+  } catch (error) {
+    message.value = `强制终止进程失败: ${error}`;
+    setTimeout(() => message.value = "", 3000);
+  }
+}
+
+async function restartProcess(processName: string) {
+  try {
+    const result = await invoke<string>("restart_process", { processName });
+    message.value = result;
+    setTimeout(() => message.value = "", 3000);
+  } catch (error) {
+    message.value = `重启进程失败: ${error}`;
+    setTimeout(() => message.value = "", 3000);
   }
 }
 
 function toggleAutoRefresh() {
-  autoRefresh.value = !autoRefresh.value;
-  if (autoRefresh.value) {
-    startAutoRefresh();
+  isAutoRefresh.value = !isAutoRefresh.value;
+
+  if (isAutoRefresh.value) {
+    refreshInterval = setInterval(getTopProcesses, 2000);
   } else {
-    stopAutoRefresh();
+    if (refreshInterval) {
+      clearInterval(refreshInterval);
+      refreshInterval = null;
+    }
   }
 }
 
+function getCpuUsageClass(cpuUsage: number) {
+  if (cpuUsage > 50) return 'high-cpu';
+  if (cpuUsage > 20) return 'medium-cpu';
+  return 'low-cpu';
+}
+
 onMounted(() => {
-  fetchTopCPUProcesses();
-  startAutoRefresh();
+  getTopProcesses();
 });
 
 onUnmounted(() => {
-  stopAutoRefresh();
+  if (refreshInterval) {
+    clearInterval(refreshInterval);
+  }
 });
 </script>
 
@@ -68,424 +108,475 @@ onUnmounted(() => {
   <main class="container">
     <h1>🖥️ CPU 监控器</h1>
 
-    <div class="controls">
-      <button @click="fetchTopCPUProcesses" :disabled="loading" class="refresh-btn">
-        {{ loading ? "刷新中..." : "🔄 手动刷新" }}
-      </button>
-      <button @click="toggleAutoRefresh" class="toggle-btn" :class="{ active: autoRefresh }">
-        {{ autoRefresh ? "⏸️ 停止自动刷新" : "▶️ 开启自动刷新" }}
-      </button>
+    <div class="row">
+      <div class="controls">
+        <button @click="getTopProcesses" :disabled="isLoading" class="refresh-btn">
+          🔄 {{ isLoading ? '加载中...' : '手动刷新' }}
+        </button>
+
+        <button @click="toggleAutoRefresh" :class="{ active: isAutoRefresh }" class="auto-refresh-btn">
+          {{ isAutoRefresh ? '⏸️ 停止自动刷新' : '▶️ 开启自动刷新' }}
+        </button>
+      </div>
     </div>
 
-    <div v-if="error" class="error">
-      {{ error }}
+    <!-- 消息提示 -->
+    <div v-if="message" class="message-banner" :class="message.includes('失败') ? 'error' : 'success'">
+      {{ message }}
     </div>
 
-    <div class="processes-container">
-      <h2>CPU 占用率最高的前10个进程</h2>
+    <div class="processes-section">
+      <h2>📊 CPU 占用率前10进程</h2>
 
-      <div v-if="loading && processes.length === 0" class="loading">
-        加载中...
+      <div v-if="processes.length === 0" class="no-processes">
+        <div class="loading-spinner" v-if="isLoading"></div>
+        <p>{{ isLoading ? '正在获取进程信息...' : '暂无进程数据' }}</p>
       </div>
 
-      <div v-else-if="processes.length > 0" class="processes-list">
-        <div class="process-header">
-          <span class="col-name">进程名称</span>
-          <span class="col-pid">进程ID</span>
-          <span class="col-cpu">CPU 使用率</span>
-        </div>
-
+      <div v-else class="process-list">
         <div
           v-for="(process, index) in processes"
           :key="process.pid"
           class="process-item"
-          :class="{ 'high-usage': process.cpu_usage > 50 }"
+          :class="getCpuUsageClass(process.cpu_usage)"
         >
           <div class="process-rank">{{ index + 1 }}</div>
+
           <div class="process-info">
-            <span class="process-name" :title="process.name">{{ process.name }}</span>
-            <span class="process-pid">PID: {{ process.pid }}</span>
-            <div class="cpu-usage">
-              <div class="cpu-bar">
-                <div
-                  class="cpu-fill"
-                  :style="{ width: Math.min(process.cpu_usage, 100) + '%' }"
-                ></div>
-              </div>
-              <span class="cpu-text">{{ process.cpu_usage.toFixed(2) }}%</span>
+            <div class="process-name">{{ process.name }}</div>
+            <div class="process-pid">PID: {{ process.pid }}</div>
+          </div>
+
+          <div class="process-cpu">
+            <div class="cpu-percentage">{{ process.cpu_usage.toFixed(1) }}%</div>
+            <div class="cpu-bar">
+              <div
+                class="cpu-bar-fill"
+                :style="{ width: Math.min(process.cpu_usage, 100) + '%' }"
+              ></div>
             </div>
+          </div>
+
+          <div class="process-actions">
+            <button
+              @click="terminateProcess(process.pid)"
+              class="action-btn terminate-btn"
+              title="优雅终止进程"
+            >
+              🛑 终止
+            </button>
+
+            <button
+              @click="forceKillProcess(process.pid)"
+              class="action-btn kill-btn"
+              title="强制终止进程"
+            >
+              💀 强杀
+            </button>
+
+            <button
+              @click="restartProcess(process.name)"
+              class="action-btn restart-btn"
+              title="重启应用程序"
+            >
+              🔄 重启
+            </button>
           </div>
         </div>
       </div>
+    </div>
 
-      <div v-else class="no-data">
-        暂无进程数据
+    <!-- Test section - can be removed in production -->
+    <div class="test-section">
+      <div>
+        <input
+          id="greet-input"
+          v-model="name"
+          placeholder="输入名称..."
+        />
+        <button type="button" @click="greet">问候</button>
       </div>
+      <p v-if="greetMsg">{{ greetMsg }}</p>
     </div>
   </main>
 </template>
 
 <style scoped>
 .container {
+  margin: 0;
   padding: 20px;
-  max-width: 1000px;
-  margin: 0 auto;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 h1 {
-  color: #2c3e50;
+  text-align: center;
   margin-bottom: 30px;
-  font-size: 2.5em;
+  font-size: 2.5rem;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
 }
 
 .controls {
   display: flex;
   gap: 15px;
-  justify-content: center;
-  margin-bottom: 30px;
 }
 
-.refresh-btn, .toggle-btn {
-  padding: 12px 24px;
-  border-radius: 8px;
-  border: none;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 14px;
-}
-
-.refresh-btn {
-  background: linear-gradient(45deg, #3498db, #2980b9);
+.refresh-btn, .auto-refresh-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
   color: white;
+  padding: 12px 24px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
 }
 
-.refresh-btn:hover {
-  background: linear-gradient(45deg, #2980b9, #1f5f8b);
+.refresh-btn:hover, .auto-refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
   transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
 .refresh-btn:disabled {
-  background: #95a5a6;
+  opacity: 0.6;
   cursor: not-allowed;
   transform: none;
 }
 
-.toggle-btn {
-  background: linear-gradient(45deg, #27ae60, #229954);
-  color: white;
+.auto-refresh-btn.active {
+  background: rgba(76, 175, 80, 0.8);
+  border-color: rgba(76, 175, 80, 1);
 }
 
-.toggle-btn:hover {
-  background: linear-gradient(45deg, #229954, #1e8449);
-  transform: translateY(-2px);
+/* 消息横幅 */
+.message-banner {
+  padding: 12px 20px;
+  margin: 15px 0;
+  border-radius: 10px;
+  text-align: center;
+  font-weight: 500;
+  animation: slideDown 0.3s ease-out;
 }
 
-.toggle-btn:not(.active) {
-  background: linear-gradient(45deg, #e74c3c, #c0392b);
+.message-banner.success {
+  background: rgba(76, 175, 80, 0.9);
+  border: 1px solid rgba(76, 175, 80, 1);
 }
 
-.toggle-btn:not(.active):hover {
-  background: linear-gradient(45deg, #c0392b, #a93226);
+.message-banner.error {
+  background: rgba(244, 67, 54, 0.9);
+  border: 1px solid rgba(244, 67, 54, 1);
 }
 
-.error {
-  background: #ffe6e6;
-  color: #c0392b;
-  padding: 15px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  border-left: 4px solid #e74c3c;
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.processes-container {
-  background: white;
-  border-radius: 12px;
+.processes-section {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(15px);
+  border-radius: 20px;
   padding: 25px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  border: 1px solid #ecf0f1;
+  margin: 20px 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.processes-container h2 {
-  color: #2c3e50;
+.processes-section h2 {
+  margin-top: 0;
   margin-bottom: 20px;
-  font-size: 1.5em;
+  font-size: 1.5rem;
 }
 
-.loading {
+.no-processes {
   text-align: center;
   padding: 40px;
-  font-size: 1.2em;
-  color: #7f8c8d;
+  font-size: 1.1rem;
+  opacity: 0.8;
 }
 
-.no-data {
-  text-align: center;
-  padding: 40px;
-  color: #7f8c8d;
-  font-style: italic;
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
 }
 
-.process-header {
-  display: grid;
-  grid-template-columns: 150px 100px 1fr;
-  gap: 20px;
-  padding: 15px 20px;
-  background: linear-gradient(45deg, #34495e, #2c3e50);
-  color: white;
-  border-radius: 8px;
-  margin-bottom: 15px;
-  font-weight: 600;
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-.processes-list {
-  border-radius: 8px;
-  overflow: hidden;
+.process-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
 }
 
 .process-item {
   display: flex;
   align-items: center;
   padding: 15px 20px;
-  border-bottom: 1px solid #ecf0f1;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.3s ease;
-  background: white;
 }
 
 .process-item:hover {
-  background: #f8f9fa;
+  background: rgba(255, 255, 255, 0.15);
   transform: translateX(5px);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
-.process-item.high-usage {
-  border-left: 4px solid #e74c3c;
-  background: linear-gradient(90deg, #ffe6e6, white);
+.process-item.high-cpu {
+  border-left: 4px solid #ff4757;
+  background: rgba(255, 71, 87, 0.1);
+}
+
+.process-item.medium-cpu {
+  border-left: 4px solid #ffa726;
+  background: rgba(255, 167, 38, 0.1);
+}
+
+.process-item.low-cpu {
+  border-left: 4px solid #4caf50;
+  background: rgba(76, 175, 80, 0.1);
 }
 
 .process-rank {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(45deg, #3498db, #2980b9);
-  color: white;
-  border-radius: 50%;
+  font-size: 1.5rem;
   font-weight: bold;
   margin-right: 20px;
-  font-size: 16px;
+  min-width: 30px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .process-info {
-  display: grid;
-  grid-template-columns: 150px 100px 1fr;
-  gap: 20px;
   flex: 1;
-  align-items: center;
+  margin-right: 20px;
 }
 
 .process-name {
+  font-size: 1.1rem;
   font-weight: 600;
-  color: #2c3e50;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  margin-bottom: 5px;
 }
 
 .process-pid {
-  color: #7f8c8d;
-  font-family: 'Monaco', 'Courier New', monospace;
-  font-size: 13px;
+  font-size: 0.9rem;
+  opacity: 0.7;
 }
 
-.cpu-usage {
+.process-cpu {
   display: flex;
-  align-items: center;
-  gap: 15px;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 120px;
+  margin-right: 20px;
+}
+
+.cpu-percentage {
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-bottom: 5px;
 }
 
 .cpu-bar {
-  flex: 1;
-  height: 20px;
-  background: #ecf0f1;
-  border-radius: 10px;
+  width: 100px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
   overflow: hidden;
-  position: relative;
 }
 
-.cpu-fill {
+.cpu-bar-fill {
   height: 100%;
-  background: linear-gradient(45deg, #27ae60, #2ecc71);
-  border-radius: 10px;
-  transition: width 0.5s ease;
-  position: relative;
+  background: linear-gradient(90deg, #4caf50, #ffa726, #ff4757);
+  border-radius: 4px;
+  transition: width 0.3s ease;
 }
 
-.process-item.high-usage .cpu-fill {
-  background: linear-gradient(45deg, #e74c3c, #ec7063);
+/* 进程操作按钮 */
+.process-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
-.cpu-text {
-  min-width: 60px;
-  text-align: right;
+.action-btn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
   font-weight: 600;
-  color: #2c3e50;
-  font-family: 'Monaco', 'Courier New', monospace;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
+.terminate-btn {
+  background: rgba(255, 152, 0, 0.8);
+  color: white;
+  border: 1px solid rgba(255, 152, 0, 1);
+}
+
+.terminate-btn:hover {
+  background: rgba(255, 152, 0, 1);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(255, 152, 0, 0.3);
+}
+
+.kill-btn {
+  background: rgba(244, 67, 54, 0.8);
+  color: white;
+  border: 1px solid rgba(244, 67, 54, 1);
+}
+
+.kill-btn:hover {
+  background: rgba(244, 67, 54, 1);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(244, 67, 54, 0.3);
+}
+
+.restart-btn {
+  background: rgba(33, 150, 243, 0.8);
+  color: white;
+  border: 1px solid rgba(33, 150, 243, 1);
+}
+
+.restart-btn:hover {
+  background: rgba(33, 150, 243, 1);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(33, 150, 243, 0.3);
+}
+
+.test-section {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(15px);
+  border-radius: 15px;
+  padding: 20px;
+  margin-top: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.test-section input {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 10px 15px;
+  border-radius: 20px;
+  margin-right: 10px;
+  min-width: 200px;
+}
+
+.test-section input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.test-section button {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.test-section button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.test-section p {
+  margin-top: 15px;
+  padding: 10px 15px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  border-left: 4px solid #4caf50;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
   .container {
-    background-color: #1a1a1a;
-  }
-
-  h1 {
-    color: #ecf0f1;
-  }
-
-  .processes-container {
-    background: #2c3e50;
-    border-color: #34495e;
-  }
-
-  .processes-container h2 {
-    color: #ecf0f1;
+    padding: 15px;
   }
 
   .process-item {
-    background: #34495e;
-    border-color: #3c5a78;
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+    gap: 15px;
+    padding: 20px;
   }
 
-  .process-item:hover {
-    background: #3c5a78;
+  .process-rank {
+    margin-right: 0;
+    margin-bottom: 10px;
   }
 
-  .process-name {
-    color: #ecf0f1;
+  .process-info {
+    margin-right: 0;
+    margin-bottom: 10px;
   }
 
-  .cpu-text {
-    color: #ecf0f1;
+  .process-cpu {
+    align-items: center;
+    margin-right: 0;
+    margin-bottom: 10px;
   }
 
-  .error {
-    background: #4a2c2c;
-    color: #e74c3c;
-    border-color: #e74c3c;
-  }
-}
-</style>
-<style>
-:root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 400;
-
-  color: #0f0f0f;
-  background-color: #f6f6f6;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
-}
-
-.container {
-  margin: 0;
-  padding-top: 10vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
-}
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
-}
-
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
-.row {
-  display: flex;
-  justify-content: center;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
-}
-
-h1 {
-  text-align: center;
-}
-
-input,
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-}
-
-button {
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: #396cd8;
-}
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
-}
-
-input,
-button {
-  outline: none;
-}
-
-#greet-input {
-  margin-right: 5px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f6f6f6;
-    background-color: #2f2f2f;
+  .process-actions {
+    justify-content: center;
+    flex-wrap: wrap;
   }
 
-  a:hover {
-    color: #24c8db;
+  .controls {
+    flex-direction: column;
+    align-items: center;
   }
 
-  input,
-  button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
-  }
-  button:active {
-    background-color: #0f0f0f69;
+  .action-btn {
+    min-width: 80px;
+    padding: 10px 15px;
+    font-size: 13px;
   }
 }
 
+@media (max-width: 480px) {
+  h1 {
+    font-size: 2rem;
+  }
+
+  .process-actions {
+    gap: 5px;
+  }
+
+  .action-btn {
+    min-width: 70px;
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+}
 </style>

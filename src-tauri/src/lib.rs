@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
+use std::process::Command;
 use std::time::Duration;
-use sysinfo::System;
+use sysinfo::{System, Pid, Signal};
 use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager,
@@ -46,6 +47,66 @@ async fn get_top_cpu_processes() -> Result<Vec<ProcessInfo>, String> {
     processes.truncate(10);
 
     Ok(processes)
+}
+
+#[tauri::command]
+async fn terminate_process(pid: u32) -> Result<String, String> {
+    let mut sys = System::new_all();
+    sys.refresh_all();
+
+    if let Some(process) = sys.process(Pid::from_u32(pid)) {
+        let process_name = process.name().to_string();
+
+        if process.kill_with(Signal::Term).is_some() {
+            Ok(format!("已成功终止进程: {} (PID: {})", process_name, pid))
+        } else {
+            Err(format!("无法终止进程: {} (PID: {})", process_name, pid))
+        }
+    } else {
+        Err(format!("找不到PID为 {} 的进程", pid))
+    }
+}
+
+#[tauri::command]
+async fn force_kill_process(pid: u32) -> Result<String, String> {
+    let mut sys = System::new_all();
+    sys.refresh_all();
+
+    if let Some(process) = sys.process(Pid::from_u32(pid)) {
+        let process_name = process.name().to_string();
+
+        if process.kill_with(Signal::Kill).is_some() {
+            Ok(format!("已强制终止进程: {} (PID: {})", process_name, pid))
+        } else {
+            Err(format!("无法强制终止进程: {} (PID: {})", process_name, pid))
+        }
+    } else {
+        Err(format!("找不到PID为 {} 的进程", pid))
+    }
+}
+
+#[tauri::command]
+async fn restart_process(process_name: String) -> Result<String, String> {
+    // 尝试重启进程（这是一个简化的实现）
+    // 注意：重启进程在macOS上比较复杂，这里提供基本实现
+
+    // 首先尝试通过 open 命令启动应用程序
+    let result = Command::new("open")
+        .arg("-a")
+        .arg(&process_name)
+        .output();
+
+    match result {
+        Ok(output) => {
+            if output.status.success() {
+                Ok(format!("尝试重启应用程序: {}", process_name))
+            } else {
+                let error = String::from_utf8_lossy(&output.stderr);
+                Err(format!("重启失败: {}", error))
+            }
+        }
+        Err(e) => Err(format!("无法重启进程 {}: {}", process_name, e))
+    }
 }
 
 fn generate_tooltip_text(processes: &[ProcessInfo]) -> String {
@@ -104,7 +165,13 @@ async fn update_tray_info(app_handle: AppHandle) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, get_top_cpu_processes])
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            get_top_cpu_processes,
+            terminate_process,
+            force_kill_process,
+            restart_process
+        ])
         .setup(|app| {
             let app_handle = app.app_handle().clone();
 
