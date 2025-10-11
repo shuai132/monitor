@@ -68,17 +68,33 @@ fn generate_tooltip_text(processes: &[ProcessInfo]) -> String {
     tooltip
 }
 
-async fn update_tray_tooltip(app_handle: AppHandle) {
-    let mut interval = interval(Duration::from_secs(5));
+async fn update_tray_info(app_handle: AppHandle) {
+    let mut interval = interval(Duration::from_secs(3));
 
     loop {
         interval.tick().await;
 
         if let Ok(processes) = get_top_cpu_processes().await {
-            let tooltip_text = generate_tooltip_text(&processes);
-
             if let Some(tray) = app_handle.tray_by_id("main-tray") {
-                let _ = tray.set_tooltip(Some(tooltip_text));
+                if let Some(top_process) = processes.first() {
+                    // 限制进程名称长度，避免托盘标题过长
+                    let process_name = if top_process.name.len() > 12 {
+                        format!("{}...", &top_process.name[..9])
+                    } else {
+                        top_process.name.clone()
+                    };
+
+                    // 设置托盘图标标题为最高CPU占用的进程
+                    let title = format!("{}: {:.1}%", process_name, top_process.cpu_usage);
+                    let _ = tray.set_title(Some(&title));
+
+                    // 设置详细的工具提示
+                    let tooltip_text = generate_tooltip_text(&processes);
+                    let _ = tray.set_tooltip(Some(tooltip_text));
+                } else {
+                    let _ = tray.set_title(Some("CPU监控器"));
+                    let _ = tray.set_tooltip(Some("暂无进程数据"));
+                }
             }
         }
     }
@@ -128,7 +144,7 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 // 等待应用完全启动
                 tokio::time::sleep(Duration::from_secs(2)).await;
-                update_tray_tooltip(app_handle_clone).await;
+                update_tray_info(app_handle_clone).await;
             });
 
             // 隐藏主窗口，只在托盘中运行
