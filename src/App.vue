@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, computed } from "vue";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 interface ProcessInfo {
   name: string;
@@ -10,12 +11,16 @@ interface ProcessInfo {
 
 const processes = ref<ProcessInfo[]>([]);
 const originalProcesses = ref<ProcessInfo[]>([]);
-const isAutoRefresh = ref(false);
+const isAutoRefresh = ref(true);
 const isLoading = ref(false);
 const message = ref("");
 const pinnedProcess = ref<ProcessInfo | null>(null);
 const pinnedPosition = ref<number>(-1);
+const isTrayPopup = ref(false);
 let refreshInterval: number | null = null;
+
+// 检测当前窗口类型
+const isCompactMode = computed(() => isTrayPopup.value);
 
 
 async function getTopProcesses() {
@@ -147,8 +152,17 @@ function getCpuUsageClass(cpuUsage: number) {
   return 'low-cpu';
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // 检测当前窗口类型
+  const currentWindow = getCurrentWindow();
+  const label = await currentWindow.label;
+  isTrayPopup.value = label === 'tray-popup';
+
+  // 启动自动刷新
   getTopProcesses();
+  if (isAutoRefresh.value) {
+    refreshInterval = setInterval(getTopProcesses, 2000);
+  }
 });
 
 onUnmounted(() => {
@@ -159,8 +173,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="container">
-    <div class="row">
+  <main class="container" :class="{ 'tray-popup': isCompactMode }">
+
+    <!-- 主窗口模式的完整控制 -->
+    <div v-if="!isCompactMode" class="row">
       <div class="controls">
         <button @click="getTopProcesses" :disabled="isLoading" class="refresh-btn">
           🔄 {{ isLoading ? '加载中...' : '手动刷新' }}
@@ -173,16 +189,16 @@ onUnmounted(() => {
     </div>
 
     <!-- 消息提示 -->
-    <div v-if="message" class="message-banner" :class="message.includes('失败') ? 'error' : 'success'">
+    <div v-if="message && !isCompactMode" class="message-banner" :class="message.includes('失败') ? 'error' : 'success'">
       {{ message }}
     </div>
 
-    <div class="processes-section">
-      <h2>📊 CPU 占用率前10进程</h2>
+    <div class="processes-section" :class="{ 'compact': isCompactMode }">
+      <h2 v-if="!isCompactMode">📊 CPU 占用率前10进程</h2>
 
-      <div v-if="processes.length === 0" class="no-processes">
+      <div v-if="processes.length === 0" class="no-processes" :class="{ 'compact': isCompactMode }">
         <div class="loading-spinner" v-if="isLoading"></div>
-        <p>{{ isLoading ? '正在获取进程信息...' : '暂无进程数据' }}</p>
+        <p>{{ isLoading ? '加载中...' : '暂无数据' }}</p>
       </div>
 
       <div v-else class="process-list">
@@ -192,54 +208,108 @@ onUnmounted(() => {
           class="process-item"
           :class="[
             getCpuUsageClass(process.cpu_usage),
-            { 'pinned': isPinnedProcess(process) }
+            { 'pinned': isPinnedProcess(process), 'compact': isCompactMode }
           ]"
           @click="pinProcess(process, index)"
         >
-          <div class="process-rank">
-            {{ isPinnedProcess(process) ? getRealRank(process, index) : index + 1 }}
-          </div>
+          <!-- 紧凑模式：两行布局 -->
+          <template v-if="isCompactMode">
+            <!-- 第一行：序号、进程名、PID、百分比、进度条 -->
+            <div class="process-main-row">
+              <div class="process-rank">
+                {{ isPinnedProcess(process) ? getRealRank(process, index) : index + 1 }}
+              </div>
 
-          <div class="process-info">
-            <div class="process-name">{{ process.name }}</div>
-            <div class="process-pid">PID: {{ process.pid }}</div>
-          </div>
+              <div class="process-info">
+                <div class="process-name">{{ process.name }} ({{ process.pid }})</div>
+              </div>
 
-          <div class="process-cpu">
-            <div class="cpu-percentage">{{ process.cpu_usage.toFixed(1) }}%</div>
-            <div class="cpu-bar">
-              <div
-                class="cpu-bar-fill"
-                :style="{ width: Math.min(process.cpu_usage, 100) + '%' }"
-              ></div>
+              <div class="process-cpu">
+                <div class="cpu-percentage">{{ process.cpu_usage.toFixed(1) }}%</div>
+                <div class="cpu-bar compact">
+                  <div
+                    class="cpu-bar-fill"
+                    :style="{ width: Math.min(process.cpu_usage, 100) + '%' }"
+                  ></div>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div class="process-actions" @click.stop>
-            <button
-              @click="terminateProcess(process.pid)"
-              class="action-btn terminate-btn"
-              title="优雅终止进程"
-            >
-              🛑 终止
-            </button>
+            <!-- 第二行：操作按钮 -->
+            <div class="process-actions" @click.stop>
+              <button
+                @click="terminateProcess(process.pid)"
+                class="action-btn terminate-btn"
+                title="优雅终止进程"
+              >
+                🛑 终止
+              </button>
 
-            <button
-              @click="forceKillProcess(process.pid)"
-              class="action-btn kill-btn"
-              title="强制终止进程"
-            >
-              💀 强杀
-            </button>
+              <button
+                @click="forceKillProcess(process.pid)"
+                class="action-btn kill-btn"
+                title="强制终止进程"
+              >
+                💀 强杀
+              </button>
 
-            <button
-              @click="restartProcess(process.name)"
-              class="action-btn restart-btn"
-              title="重启应用程序"
-            >
-              🔄 重启
-            </button>
-          </div>
+              <button
+                @click="restartProcess(process.name)"
+                class="action-btn restart-btn"
+                title="重启应用程序"
+              >
+                🔄 重启
+              </button>
+            </div>
+          </template>
+
+          <!-- 普通模式：一行布局 -->
+          <template v-else>
+            <div class="process-rank">
+              {{ isPinnedProcess(process) ? getRealRank(process, index) : index + 1 }}
+            </div>
+
+            <div class="process-info">
+              <div class="process-name">{{ process.name }}</div>
+              <div class="process-pid">PID: {{ process.pid }}</div>
+            </div>
+
+            <div class="process-cpu">
+              <div class="cpu-percentage">{{ process.cpu_usage.toFixed(1) }}%</div>
+              <div class="cpu-bar">
+                <div
+                  class="cpu-bar-fill"
+                  :style="{ width: Math.min(process.cpu_usage, 100) + '%' }"
+                ></div>
+              </div>
+            </div>
+
+            <div class="process-actions" @click.stop>
+              <button
+                @click="terminateProcess(process.pid)"
+                class="action-btn terminate-btn"
+                title="优雅终止进程"
+              >
+                🛑 终止
+              </button>
+
+              <button
+                @click="forceKillProcess(process.pid)"
+                class="action-btn kill-btn"
+                title="强制终止进程"
+              >
+                💀 强杀
+              </button>
+
+              <button
+                @click="restartProcess(process.name)"
+                class="action-btn restart-btn"
+                title="重启应用程序"
+              >
+                🔄 重启
+              </button>
+            </div>
+          </template>
         </div>
       </div>
     </div>
@@ -547,6 +617,130 @@ h1 {
   border-color: #bae6fd;
   box-shadow: 0 1px 2px rgba(3, 105, 161, 0.1);
 }
+
+/* 托盘弹窗样式 */
+.container.tray-popup {
+  padding: 8px;
+  min-height: auto;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.tray-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 16px;
+}
+
+.tray-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.tray-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.tray-refresh-btn, .tray-auto-btn {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #4a5568;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tray-refresh-btn:hover, .tray-auto-btn:hover {
+  background: #f7fafc;
+  border-color: #cbd5e0;
+}
+
+.tray-auto-btn.active {
+  background: #38a169;
+  color: white;
+  border-color: #38a169;
+}
+
+.processes-section.compact {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  box-shadow: none;
+}
+
+.no-processes.compact {
+  padding: 24px 16px;
+  font-size: 12px;
+}
+
+.process-item.compact {
+  padding: 8px 12px;
+  font-size: 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.process-item.compact .process-main-row {
+  display: flex;
+  align-items: center;
+}
+
+.process-item.compact .process-rank {
+  font-size: 14px;
+  margin-right: 12px;
+  min-width: 20px;
+}
+
+.process-item.compact .process-name {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.process-item.compact .process-cpu {
+  min-width: 80px;
+  margin-right: 0;
+}
+
+.process-item.compact .cpu-percentage {
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.cpu-bar.compact {
+  width: 60px;
+  height: 4px;
+}
+
+.process-item.compact .process-actions {
+  justify-content: flex-start;
+  margin: 0;
+}
+
+.process-item.compact .action-btn {
+  min-width: 45px;
+  padding: 4px 8px;
+  font-size: 10px;
+}
+
 
 /* 响应式设计 */
 @media (max-width: 768px) {
