@@ -15,11 +15,6 @@ pub struct ProcessInfo {
     pub cpu_usage: f32,
 }
 
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
 
 #[tauri::command]
 async fn get_top_cpu_processes() -> Result<Vec<ProcessInfo>, String> {
@@ -166,7 +161,6 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            greet,
             get_top_cpu_processes,
             terminate_process,
             force_kill_process,

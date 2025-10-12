@@ -8,17 +8,12 @@ interface ProcessInfo {
   cpu_usage: number;
 }
 
-const greetMsg = ref("");
-const name = ref("");
 const processes = ref<ProcessInfo[]>([]);
 const isAutoRefresh = ref(false);
 const isLoading = ref(false);
 const message = ref("");
 let refreshInterval: number | null = null;
 
-async function greet() {
-  greetMsg.value = await invoke("greet", { name: name.value });
-}
 
 async function getTopProcesses() {
   isLoading.value = true;
@@ -186,18 +181,6 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Test section - can be removed in production -->
-    <div class="test-section">
-      <div>
-        <input
-          id="greet-input"
-          v-model="name"
-          placeholder="输入名称..."
-        />
-        <button type="button" @click="greet">问候</button>
-      </div>
-      <p v-if="greetMsg">{{ greetMsg }}</p>
-    </div>
   </main>
 </template>
 
@@ -470,52 +453,6 @@ h1 {
   box-shadow: 0 3px 10px rgba(33, 150, 243, 0.3);
 }
 
-.test-section {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(15px);
-  border-radius: 15px;
-  padding: 20px;
-  margin-top: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.test-section input {
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: white;
-  padding: 10px 15px;
-  border-radius: 20px;
-  margin-right: 10px;
-  min-width: 200px;
-}
-
-.test-section input::placeholder {
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.test-section button {
-  background: rgba(255, 255, 255, 0.2);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  color: white;
-  padding: 10px 20px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-.test-section button:hover {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.5);
-}
-
-.test-section p {
-  margin-top: 15px;
-  padding: 10px 15px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  border-left: 4px solid #4caf50;
-}
 
 /* 响应式设计 */
 @media (max-width: 768px) {
