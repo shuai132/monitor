@@ -1,5 +1,6 @@
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, watch, type Ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
+import type { AppSettings } from "./useSettings";
 
 export interface ProcessInfo {
   name: string;
@@ -7,10 +8,9 @@ export interface ProcessInfo {
   cpu_usage: number;
 }
 
-export function useProcesses() {
+export function useProcesses(settings?: Ref<AppSettings>) {
   const processes = ref<ProcessInfo[]>([]);
   const originalProcesses = ref<ProcessInfo[]>([]);
-  const isAutoRefresh = ref(true);
   const isLoading = ref(false);
   const message = ref("");
   const pinnedProcess = ref<ProcessInfo | null>(null);
@@ -127,19 +127,6 @@ export function useProcesses() {
     }
   }
 
-  function toggleAutoRefresh() {
-    isAutoRefresh.value = !isAutoRefresh.value;
-
-    if (isAutoRefresh.value) {
-      refreshInterval = setInterval(getTopProcesses, 2000);
-    } else {
-      if (refreshInterval) {
-        clearInterval(refreshInterval);
-        refreshInterval = null;
-      }
-    }
-  }
-
   function getCpuUsageClass(cpuUsage: number) {
     if (cpuUsage > 50) return 'high-cpu';
     if (cpuUsage > 20) return 'medium-cpu';
@@ -148,8 +135,20 @@ export function useProcesses() {
 
   function startAutoRefresh() {
     getTopProcesses();
-    if (isAutoRefresh.value) {
-      refreshInterval = setInterval(getTopProcesses, 2000);
+    if (settings?.value.autoRefresh) {
+      const interval = (settings?.value.refreshInterval || 2) * 1000;
+      refreshInterval = setInterval(getTopProcesses, interval);
+    }
+  }
+
+  function updateAutoRefresh(enabled: boolean, intervalSeconds: number) {
+    if (refreshInterval) {
+      clearInterval(refreshInterval);
+      refreshInterval = null;
+    }
+
+    if (enabled) {
+      refreshInterval = setInterval(getTopProcesses, intervalSeconds * 1000);
     }
   }
 
@@ -160,11 +159,20 @@ export function useProcesses() {
     }
   }
 
+  // 监听设置变化
+  if (settings) {
+    watch(
+      () => [settings.value.autoRefresh, settings.value.refreshInterval],
+      ([autoRefresh, interval]) => {
+        updateAutoRefresh(autoRefresh as boolean, interval as number);
+      }
+    );
+  }
+
   return {
     // 响应式数据
     processes,
     originalProcesses,
-    isAutoRefresh,
     isLoading,
     message,
     pinnedProcess,
@@ -180,9 +188,9 @@ export function useProcesses() {
     terminateProcess,
     forceKillProcess,
     restartProcess,
-    toggleAutoRefresh,
     getCpuUsageClass,
     startAutoRefresh,
-    stopAutoRefresh
+    stopAutoRefresh,
+    updateAutoRefresh
   };
 }

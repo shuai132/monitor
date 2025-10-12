@@ -104,6 +104,42 @@ async fn restart_process(process_name: String) -> Result<String, String> {
     }
 }
 
+#[tauri::command]
+async fn show_high_cpu_alert(app_handle: AppHandle) -> Result<(), String> {
+    // 检查是否已经有高CPU警告弹窗存在
+    if let Some(alert_window) = app_handle.get_webview_window("high-cpu-alert") {
+        let is_visible = alert_window.is_visible().unwrap_or(false);
+
+        if !is_visible {
+            // 重新计算位置，确保在正确的位置显示
+            let (screen_width, screen_height) = get_screen_size();
+            let popup_width = 420.0;
+            let popup_height = 600.0;
+            let (x, y) = calculate_tray_popup_position(screen_width, screen_height, popup_width, popup_height);
+            let alert_x = x - 50.0; // 向左偏移
+            let alert_y = y + 50.0; // 向下偏移
+
+            let _ = alert_window.set_position(Position::Logical(LogicalPosition::new(alert_x, alert_y)));
+            let _ = alert_window.show();
+            let _ = alert_window.set_focus();
+        }
+    } else {
+        // 创建高CPU警告弹窗
+        create_high_cpu_alert(app_handle).map_err(|e| format!("创建高CPU警告弹窗失败: {}", e))?;
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn hide_high_cpu_alert(app_handle: AppHandle) -> Result<(), String> {
+    if let Some(alert_window) = app_handle.get_webview_window("high-cpu-alert") {
+        let _ = alert_window.hide();
+    }
+
+    Ok(())
+}
+
 fn generate_tooltip_text(processes: &[ProcessInfo]) -> String {
     let mut tooltip = "🖥️ CPU监控器 - 前10进程:\n\n".to_string();
 
@@ -129,7 +165,7 @@ fn create_tray_popup(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
 
     // 获取屏幕尺寸来计算位置
     let popup_width = 420.0;
-    let popup_height = 600.0;
+    let popup_height = 400.0; // 减少初始高度，让内容自适应
 
     // 获取主显示器的尺寸
     let (screen_width, screen_height) = get_screen_size();
@@ -154,6 +190,47 @@ fn create_tray_popup(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
 
     // 暂时移除原生圆角设置，避免运行时错误
     // 圆角效果将通过CSS实现
+
+    // 添加失焦隐藏功能
+    let window_clone = window.clone();
+    window.on_window_event(move |event| {
+        if let WindowEvent::Focused(false) = event {
+            let _ = window_clone.hide();
+        }
+    });
+
+    Ok(())
+}
+
+fn create_high_cpu_alert(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    use tauri::{WebviewWindowBuilder, WebviewUrl};
+
+    // 获取屏幕尺寸来计算位置
+    let popup_width = 420.0;
+    let popup_height = 600.0;
+
+    // 获取主显示器的尺寸
+    let (screen_width, screen_height) = get_screen_size();
+
+    // 计算高CPU警告弹窗位置（稍微偏移，避免与托盘弹窗重叠）
+    let (x, y) = calculate_tray_popup_position(screen_width, screen_height, popup_width, popup_height);
+    let alert_x = x - 50.0; // 向左偏移
+    let alert_y = y + 50.0; // 向下偏移
+
+    println!("High CPU Alert position: ({}, {})", alert_x, alert_y);
+
+    let window = WebviewWindowBuilder::new(&app, "high-cpu-alert", WebviewUrl::App("index.html".into()))
+        .title("CPU监控器 - 高CPU警告")
+        .inner_size(popup_width, popup_height)
+        .position(alert_x, alert_y)
+        .resizable(false)
+        .maximizable(false)
+        .minimizable(false)
+        .skip_taskbar(true)
+        .always_on_top(true)
+        .decorations(false)  // 无边框窗口
+        .shadow(true)        // 添加阴影
+        .build()?;
 
     // 添加失焦隐藏功能
     let window_clone = window.clone();
@@ -277,7 +354,9 @@ pub fn run() {
             get_top_cpu_processes,
             terminate_process,
             force_kill_process,
-            restart_process
+            restart_process,
+            show_high_cpu_alert,
+            hide_high_cpu_alert
         ])
         .setup(|app| {
             let app_handle = app.app_handle().clone();

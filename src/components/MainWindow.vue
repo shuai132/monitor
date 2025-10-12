@@ -6,10 +6,30 @@
         🔄 {{ isLoading ? '加载中...' : '手动刷新' }}
       </button>
 
-      <button @click="toggleAutoRefresh" :class="{ active: isAutoRefresh }" class="auto-refresh-btn">
-        {{ isAutoRefresh ? '⏸️ 停止自动刷新' : '▶️ 开启自动刷新' }}
+      <button @click="showSettings = !showSettings" class="settings-btn">
+        ⚙️ 设置
       </button>
     </div>
+
+    <!-- 设置面板 -->
+    <SettingsPanel
+      v-if="showSettings"
+      @close="showSettings = false"
+      @autoRefreshChange="handleAutoRefreshChange"
+    />
+
+    <!-- 高CPU警告弹窗 -->
+    <HighCpuAlert
+      v-if="shouldShowAlert && !showSettings"
+      :alertProcesses="alertProcesses"
+      :getProcessDuration="getProcessDuration"
+      :terminateProcess="terminateProcess"
+      :forceKillProcess="forceKillProcess"
+      :restartProcess="restartProcess"
+      :getCpuUsageClass="getCpuUsageClass"
+      @clearAlert="clearAlert"
+      @clearAllAlerts="clearAllAlerts"
+    />
 
     <!-- 消息提示 -->
     <div v-if="message" class="message-banner" :class="message.includes('失败') ? 'error' : 'success'">
@@ -18,7 +38,7 @@
 
     <!-- 进程列表区域 -->
     <div class="processes-section">
-      <h2>📊 CPU 占用率前10进程</h2>
+      <h4>📊 CPU 占用率前10进程</h4>
 
       <div v-if="processes.length === 0" class="no-processes">
         <div class="loading-spinner" v-if="isLoading"></div>
@@ -42,13 +62,22 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { useProcesses } from '../composables/useProcesses';
+import { useSettings } from '../composables/useSettings';
+import { useHighCpuMonitor } from '../composables/useHighCpuMonitor';
 import ProcessList from './ProcessList.vue';
+import SettingsPanel from './SettingsPanel.vue';
+import HighCpuAlert from './HighCpuAlert.vue';
 
+const showSettings = ref(false);
+
+// 设置管理
+const { settings } = useSettings();
+
+// 进程管理
 const {
   processes,
-  isAutoRefresh,
   isLoading,
   message,
   isPinnedProcess,
@@ -59,10 +88,32 @@ const {
   forceKillProcess,
   restartProcess,
   getTopProcesses,
-  toggleAutoRefresh,
   startAutoRefresh,
-  stopAutoRefresh
-} = useProcesses();
+  stopAutoRefresh,
+  updateAutoRefresh
+} = useProcesses(settings);
+
+// 高CPU监控
+const {
+  alertProcesses,
+  shouldShowAlert,
+  monitorHighCpu,
+  clearAlert,
+  clearAllAlerts,
+  getProcessDuration
+} = useHighCpuMonitor();
+
+// 处理设置变化
+function handleAutoRefreshChange(enabled: boolean, interval: number) {
+  updateAutoRefresh(enabled, interval);
+}
+
+// 监控进程变化，检查高CPU使用率
+watch(processes, (newProcesses) => {
+  if (newProcesses.length > 0) {
+    monitorHighCpu(newProcesses, settings.value);
+  }
+}, { deep: true });
 
 onMounted(() => {
   startAutoRefresh();
@@ -90,7 +141,7 @@ onUnmounted(() => {
   margin-bottom: 24px;
 }
 
-.refresh-btn, .auto-refresh-btn {
+.refresh-btn, .auto-refresh-btn, .settings-btn {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   color: #4a5568;
@@ -103,7 +154,7 @@ onUnmounted(() => {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.refresh-btn:hover, .auto-refresh-btn:hover {
+.refresh-btn:hover, .auto-refresh-btn:hover, .settings-btn:hover {
   background: #f7fafc;
   border-color: #cbd5e0;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -157,18 +208,20 @@ onUnmounted(() => {
 .processes-section {
   background: #ffffff;
   border-radius: 12px;
-  padding: 24px;
+  padding: 12px;
   margin: 24px 0;
   border: 1px solid #e2e8f0;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.processes-section h2 {
+.processes-section h4 {
   margin-top: 0;
-  margin-bottom: 20px;
-  font-size: 1.25rem;
+  margin-bottom: 16px;
+  font-size: 1.0rem;
   font-weight: 600;
   color: #2d3748;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .no-processes {
