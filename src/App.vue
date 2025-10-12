@@ -9,9 +9,12 @@ interface ProcessInfo {
 }
 
 const processes = ref<ProcessInfo[]>([]);
+const originalProcesses = ref<ProcessInfo[]>([]);
 const isAutoRefresh = ref(false);
 const isLoading = ref(false);
 const message = ref("");
+const pinnedProcess = ref<ProcessInfo | null>(null);
+const pinnedPosition = ref<number>(-1);
 let refreshInterval: number | null = null;
 
 
@@ -19,13 +22,69 @@ async function getTopProcesses() {
   isLoading.value = true;
   try {
     const result = await invoke<ProcessInfo[]>("get_top_cpu_processes");
-    processes.value = result;
+    originalProcesses.value = result; // 保存原始排序
+    processes.value = arrangeProcesses(result);
   } catch (error) {
     console.error("获取进程信息失败:", error);
     processes.value = [];
+    originalProcesses.value = [];
   } finally {
     isLoading.value = false;
   }
+}
+
+function arrangeProcesses(newProcesses: ProcessInfo[]): ProcessInfo[] {
+  if (pinnedProcess.value && pinnedPosition.value >= 0) {
+    // 查找固定进程的最新信息
+    const updatedPinnedProcess = newProcesses.find(p => p.pid === pinnedProcess.value!.pid);
+
+    if (updatedPinnedProcess) {
+      // 从新列表中移除固定的进程
+      const filteredProcesses = newProcesses.filter(p => p.pid !== pinnedProcess.value!.pid);
+
+      // 在指定位置插入固定的进程
+      const result = [...filteredProcesses];
+      result.splice(pinnedPosition.value, 0, updatedPinnedProcess);
+
+      // 如果超过10个，只保留前10个
+      return result.slice(0, 10);
+    } else {
+      // 如果固定的进程不存在了，清除固定状态
+      clearPinnedProcess();
+      return newProcesses;
+    }
+  }
+
+  return newProcesses;
+}
+
+function pinProcess(process: ProcessInfo, index: number) {
+  if (isPinnedProcess(process)) {
+    // 取消固定
+    clearPinnedProcess();
+  } else {
+    // 固定进程
+    pinnedProcess.value = process;
+    pinnedPosition.value = index;
+  }
+}
+
+function clearPinnedProcess() {
+  pinnedProcess.value = null;
+  pinnedPosition.value = -1;
+}
+
+function isPinnedProcess(process: ProcessInfo): boolean {
+  return pinnedProcess.value?.pid === process.pid;
+}
+
+function getRealRank(process: ProcessInfo, index: number): number {
+  if (isPinnedProcess(process)) {
+    // 从原始进程列表中查找真实排名
+    const rank = originalProcesses.value.findIndex(p => p.pid === process.pid);
+    return rank >= 0 ? rank + 1 : index + 1;
+  }
+  return index + 1;
 }
 
 async function terminateProcess(pid: number) {
@@ -101,8 +160,6 @@ onUnmounted(() => {
 
 <template>
   <main class="container">
-    <h1>🖥️ CPU 监控器</h1>
-
     <div class="row">
       <div class="controls">
         <button @click="getTopProcesses" :disabled="isLoading" class="refresh-btn">
@@ -133,9 +190,15 @@ onUnmounted(() => {
           v-for="(process, index) in processes"
           :key="process.pid"
           class="process-item"
-          :class="getCpuUsageClass(process.cpu_usage)"
+          :class="[
+            getCpuUsageClass(process.cpu_usage),
+            { 'pinned': isPinnedProcess(process) }
+          ]"
+          @click="pinProcess(process, index)"
         >
-          <div class="process-rank">{{ index + 1 }}</div>
+          <div class="process-rank">
+            {{ isPinnedProcess(process) ? getRealRank(process, index) : index + 1 }}
+          </div>
 
           <div class="process-info">
             <div class="process-name">{{ process.name }}</div>
@@ -152,7 +215,7 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div class="process-actions">
+          <div class="process-actions" @click.stop>
             <button
               @click="terminateProcess(process.pid)"
               class="action-btn terminate-btn"
@@ -337,6 +400,23 @@ h1 {
   background: #edf2f7;
   border-color: #cbd5e0;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* 固定状态样式 */
+.process-item.pinned {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  cursor: pointer;
+}
+
+.process-item.pinned:hover {
+  background: #cbd5e1;
+  border-color: #64748b;
+}
+
+.process-item.pinned .process-rank {
+  color: #475569;
+  font-weight: 700;
 }
 
 
