@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::process::Command;
 use std::time::Duration;
-use sysinfo::{System, Pid, Signal};
+use sysinfo::{System, Pid, Signal, ProcessesToUpdate};
 use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager, WindowEvent, Position, LogicalPosition,
@@ -23,13 +23,13 @@ async fn get_top_cpu_processes() -> Result<Vec<ProcessInfo>, String> {
 
     // 等待一秒再次刷新以获得更准确的CPU使用率
     tokio::time::sleep(Duration::from_secs(1)).await;
-    sys.refresh_processes();
+    sys.refresh_processes(ProcessesToUpdate::All, true);
 
     let mut processes: Vec<ProcessInfo> = sys
         .processes()
         .iter()
         .map(|(pid, process)| ProcessInfo {
-            name: process.name().to_string(),
+            name: process.name().to_str().unwrap().to_owned(),
             pid: pid.as_u32(),
             cpu_usage: process.cpu_usage(),
         })
@@ -50,7 +50,7 @@ async fn terminate_process(pid: u32) -> Result<String, String> {
     sys.refresh_all();
 
     if let Some(process) = sys.process(Pid::from_u32(pid)) {
-        let process_name = process.name().to_string();
+        let process_name = process.name().to_str().unwrap().to_owned();
 
         if process.kill_with(Signal::Term).is_some() {
             Ok(format!("已成功终止进程: {} (PID: {})", process_name, pid))
@@ -68,7 +68,7 @@ async fn force_kill_process(pid: u32) -> Result<String, String> {
     sys.refresh_all();
 
     if let Some(process) = sys.process(Pid::from_u32(pid)) {
-        let process_name = process.name().to_string();
+        let process_name = process.name().to_str().unwrap().to_owned();
 
         if process.kill_with(Signal::Kill).is_some() {
             Ok(format!("已强制终止进程: {} (PID: {})", process_name, pid))
