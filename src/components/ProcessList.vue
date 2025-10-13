@@ -1,14 +1,14 @@
 <template>
   <div class="process-list">
     <div
-      v-for="(process, index) in processes"
-      :key="process.pid"
-      class="process-item"
-      :class="{
+        v-for="(process, index) in processes"
+        :key="process.pid"
+        class="process-item"
+        :class="{
         pinned: isPinnedProcess(process),
         [getCpuUsageClass(process.cpu_usage)]: true
       }"
-      @click="pinProcess(process, index)"
+        @click="pinProcess(process, index)"
     >
       <!-- 第一行：进程名 + CPU百分比和进度条 -->
       <div class="process-row-1">
@@ -27,8 +27,8 @@
           </div>
           <div class="cpu-bar-container">
             <div
-              class="cpu-bar"
-              :style="{ width: Math.min(process.cpu_usage, 100) + '%' }"
+                class="cpu-bar"
+                :style="{ width: Math.min(process.cpu_usage, 100) + '%' }"
             ></div>
           </div>
         </div>
@@ -42,23 +42,23 @@
 
         <div class="action-buttons">
           <button
-            @click.stop="terminateProcess(process.pid)"
-            class="action-btn terminate-btn"
-            :title="`终止进程 ${process.name}`"
+              @click.stop="terminateProcess(process.pid)"
+              class="action-btn terminate-btn"
+              :title="`终止进程 ${process.name}`"
           >
             ⏹️
           </button>
           <button
-            @click.stop="forceKillProcess(process.pid)"
-            class="action-btn kill-btn"
-            :title="`强制终止进程 ${process.name}`"
+              @click.stop="forceKillProcess(process.pid)"
+              class="action-btn kill-btn"
+              :title="`强制终止进程 ${process.name}`"
           >
             ❌
           </button>
           <button
-            @click.stop="restartProcess(process.name)"
-            class="action-btn restart-btn"
-            :title="`重启进程 ${process.name}`"
+              @click.stop="restartProcess(process.name)"
+              class="action-btn restart-btn"
+              :title="`重启进程 ${process.name}`"
           >
             🔄
           </button>
@@ -69,7 +69,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ProcessInfo } from '../composables/useProcesses';
+import type {ProcessInfo} from '../composables/useProcesses';
 
 interface Props {
   processes: ProcessInfo[];

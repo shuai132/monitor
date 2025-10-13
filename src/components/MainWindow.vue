@@ -2,33 +2,33 @@
   <div class="main-window">
     <!-- 控制按钮 -->
     <div class="controls">
-      <button @click="getTopProcesses" :disabled="isLoading" class="refresh-btn">
-        🔄 {{ isLoading ? '加载中...' : '手动刷新' }}
-      </button>
-
       <button @click="showSettings = !showSettings" class="settings-btn">
         ⚙️ 设置
+      </button>
+
+      <button @click="getTopProcesses" :disabled="isLoading" class="refresh-btn">
+        🔄 {{ isLoading ? '加载中...' : '手动刷新' }}
       </button>
     </div>
 
     <!-- 设置面板 -->
     <SettingsPanel
-      v-if="showSettings"
-      @close="showSettings = false"
-      @autoRefreshChange="handleAutoRefreshChange"
+        v-if="showSettings"
+        @close="showSettings = false"
+        @autoRefreshChange="handleAutoRefreshChange"
     />
 
     <!-- 高CPU警告弹窗 -->
     <HighCpuAlert
-      v-if="shouldShowAlert && !showSettings"
-      :alertProcesses="alertProcesses"
-      :getProcessDuration="getProcessDuration"
-      :terminateProcess="terminateProcess"
-      :forceKillProcess="forceKillProcess"
-      :restartProcess="restartProcess"
-      :getCpuUsageClass="getCpuUsageClass"
-      @clearAlert="clearAlert"
-      @clearAllAlerts="clearAllAlerts"
+        v-if="shouldShowAlert && !showSettings"
+        :alertProcesses="alertProcesses"
+        :getProcessDuration="getProcessDuration"
+        :terminateProcess="terminateProcess"
+        :forceKillProcess="forceKillProcess"
+        :restartProcess="restartProcess"
+        :getCpuUsageClass="getCpuUsageClass"
+        @clearAlert="clearAlert"
+        @clearAllAlerts="clearAllAlerts"
     />
 
     <!-- 消息提示 -->
@@ -46,26 +46,26 @@
       </div>
 
       <ProcessList
-        v-else
-        :processes="processes"
-        :compact="false"
-        :isPinnedProcess="isPinnedProcess"
-        :getRealRank="getRealRank"
-        :getCpuUsageClass="getCpuUsageClass"
-        :pinProcess="pinProcess"
-        :terminateProcess="terminateProcess"
-        :forceKillProcess="forceKillProcess"
-        :restartProcess="restartProcess"
+          v-else
+          :processes="processes"
+          :compact="false"
+          :isPinnedProcess="isPinnedProcess"
+          :getRealRank="getRealRank"
+          :getCpuUsageClass="getCpuUsageClass"
+          :pinProcess="pinProcess"
+          :terminateProcess="terminateProcess"
+          :forceKillProcess="forceKillProcess"
+          :restartProcess="restartProcess"
       />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
-import { useProcesses } from '../composables/useProcesses';
-import { useSettings } from '../composables/useSettings';
-import { useHighCpuMonitor } from '../composables/useHighCpuMonitor';
+import {onMounted, onUnmounted, ref, watch} from 'vue';
+import {useProcesses} from '../composables/useProcesses';
+import {useSettings} from '../composables/useSettings';
+import {useHighCpuMonitor} from '../composables/useHighCpuMonitor';
 import ProcessList from './ProcessList.vue';
 import SettingsPanel from './SettingsPanel.vue';
 import HighCpuAlert from './HighCpuAlert.vue';
@@ -73,7 +73,7 @@ import HighCpuAlert from './HighCpuAlert.vue';
 const showSettings = ref(false);
 
 // 设置管理
-const { settings } = useSettings();
+const {settings} = useSettings();
 
 // 进程管理
 const {
@@ -113,7 +113,7 @@ watch(processes, (newProcesses) => {
   if (newProcesses.length > 0) {
     monitorHighCpu(newProcesses, settings.value);
   }
-}, { deep: true });
+}, {deep: true});
 
 onMounted(() => {
   startAutoRefresh();
@@ -127,7 +127,7 @@ onUnmounted(() => {
 <style scoped>
 .main-window {
   margin: 0;
-  padding: 24px;
+  padding: 12px;
   min-height: 100vh;
   background: #fafbfc;
   color: #1a202c;
@@ -138,7 +138,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: center;
   gap: 12px;
-  margin-bottom: 24px;
+  margin-bottom: 12px;
 }
 
 .refresh-btn, .auto-refresh-btn, .settings-btn {
@@ -201,8 +201,14 @@ onUnmounted(() => {
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .processes-section {
@@ -242,8 +248,12 @@ onUnmounted(() => {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* 响应式设计 */

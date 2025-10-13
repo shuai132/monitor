@@ -1,27 +1,27 @@
 <template>
   <div class="high-cpu-tray-popup">
     <HighCpuAlert
-      :alertProcesses="alertProcesses"
-      :getProcessDuration="getProcessDuration"
-      :terminateProcess="terminateProcess"
-      :forceKillProcess="forceKillProcess"
-      :restartProcess="restartProcess"
-      :getCpuUsageClass="getCpuUsageClass"
-      @clearAlert="clearAlert"
-      @clearAllAlerts="clearAllAlerts"
+        :alertProcesses="alertProcesses"
+        :getProcessDuration="getProcessDuration"
+        :terminateProcess="terminateProcess"
+        :forceKillProcess="forceKillProcess"
+        :restartProcess="restartProcess"
+        :getCpuUsageClass="getCpuUsageClass"
+        @clearAlert="clearAlert"
+        @clearAllAlerts="clearAllAlerts"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch } from 'vue';
-import { useProcesses } from '../composables/useProcesses';
-import { useSettings } from '../composables/useSettings';
-import { useHighCpuMonitor } from '../composables/useHighCpuMonitor';
+import {onMounted, onUnmounted, watch} from 'vue';
+import {useProcesses} from '../composables/useProcesses';
+import {useSettings} from '../composables/useSettings';
+import {useHighCpuMonitor} from '../composables/useHighCpuMonitor';
 import HighCpuAlert from './HighCpuAlert.vue';
 
 // 设置管理
-const { settings } = useSettings();
+const {settings} = useSettings();
 
 // 进程管理
 const {
@@ -48,7 +48,7 @@ watch(processes, (newProcesses) => {
   if (newProcesses.length > 0) {
     monitorHighCpu(newProcesses, settings.value);
   }
-}, { deep: true });
+}, {deep: true});
 
 onMounted(() => {
   startAutoRefresh();

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import {onMounted, ref} from "vue";
+import {getCurrentWindow} from "@tauri-apps/api/window";
 import MainWindow from './components/MainWindow.vue';
 import TrayPopup from './components/TrayPopup.vue';
 import HighCpuTrayPopup from './components/HighCpuTrayPopup.vue';
@@ -19,9 +19,9 @@ onMounted(async () => {
 
 <template>
   <!-- 根据窗口类型渲染不同的组件 -->
-  <TrayPopup v-if="isTrayPopup" />
-  <HighCpuTrayPopup v-else-if="isHighCpuAlert" />
-  <MainWindow v-else />
+  <TrayPopup v-if="isTrayPopup"/>
+  <HighCpuTrayPopup v-else-if="isHighCpuAlert"/>
+  <MainWindow v-else/>
 </template>
 
 <style>

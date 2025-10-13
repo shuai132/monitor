@@ -121,7 +121,6 @@ async fn show_high_cpu_alert(app_handle: AppHandle) -> Result<(), String> {
 
             let _ = alert_window.set_position(Position::Logical(LogicalPosition::new(alert_x, alert_y)));
             let _ = alert_window.show();
-            let _ = alert_window.set_focus();
         }
     } else {
         // 创建高CPU警告弹窗
@@ -230,6 +229,7 @@ fn create_high_cpu_alert(app: AppHandle) -> Result<(), Box<dyn std::error::Error
         .always_on_top(true)
         .decorations(false)  // 无边框窗口
         .shadow(true)        // 添加阴影
+        .focused(false)
         .build()?;
 
     // 添加失焦隐藏功能

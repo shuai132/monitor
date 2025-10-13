@@ -9,13 +9,13 @@
       <!-- 刷新设置 -->
       <div class="setting-group">
         <h4>🔄 刷新设置</h4>
-        
+
         <div class="setting-item">
           <label class="setting-label">
-            <input 
-              type="checkbox" 
-              v-model="settings.autoRefresh"
-              @change="onAutoRefreshChange"
+            <input
+                type="checkbox"
+                v-model="settings.autoRefresh"
+                @change="onAutoRefreshChange"
             />
             启用自动刷新
           </label>
@@ -23,12 +23,12 @@
 
         <div class="setting-item" v-if="settings.autoRefresh">
           <label class="setting-label">刷新间隔（秒）</label>
-          <input 
-            type="number" 
-            v-model.number="settings.refreshInterval"
-            min="1" 
-            max="60" 
-            class="number-input"
+          <input
+              type="number"
+              v-model.number="settings.refreshInterval"
+              min="1"
+              max="60"
+              class="number-input"
           />
         </div>
       </div>
@@ -36,12 +36,12 @@
       <!-- 托盘显示设置 -->
       <div class="setting-group">
         <h4>📋 托盘显示</h4>
-        
+
         <div class="setting-item">
           <label class="setting-label">
-            <input 
-              type="checkbox" 
-              v-model="settings.trayShowProcess"
+            <input
+                type="checkbox"
+                v-model="settings.trayShowProcess"
             />
             显示进程名称
           </label>
@@ -49,9 +49,9 @@
 
         <div class="setting-item">
           <label class="setting-label">
-            <input 
-              type="checkbox" 
-              v-model="settings.trayShowPercentage"
+            <input
+                type="checkbox"
+                v-model="settings.trayShowPercentage"
             />
             显示CPU百分比
           </label>
@@ -61,12 +61,12 @@
       <!-- 高CPU警告设置 -->
       <div class="setting-group">
         <h4>⚠️ 高CPU使用率警告</h4>
-        
+
         <div class="setting-item">
           <label class="setting-label">
-            <input 
-              type="checkbox" 
-              v-model="settings.highCpuAlert"
+            <input
+                type="checkbox"
+                v-model="settings.highCpuAlert"
             />
             启用高CPU警告
           </label>
@@ -75,23 +75,23 @@
         <div v-if="settings.highCpuAlert" class="sub-settings">
           <div class="setting-item">
             <label class="setting-label">CPU阈值（%）</label>
-            <input 
-              type="number" 
-              v-model.number="settings.highCpuThreshold"
-              min="50" 
-              max="200" 
-              class="number-input"
+            <input
+                type="number"
+                v-model.number="settings.highCpuThreshold"
+                min="50"
+                max="200"
+                class="number-input"
             />
           </div>
 
           <div class="setting-item">
             <label class="setting-label">持续时间（分钟）</label>
-            <input 
-              type="number" 
-              v-model.number="settings.highCpuDuration"
-              min="1" 
-              max="60" 
-              class="number-input"
+            <input
+                type="number"
+                v-model.number="settings.highCpuDuration"
+                min="1"
+                max="60"
+                class="number-input"
             />
           </div>
         </div>
@@ -110,16 +110,17 @@
 </template>
 
 <script setup lang="ts">
-import { useSettings } from '../composables/useSettings';
+import {useSettings} from '../composables/useSettings';
 
 interface Emits {
   (e: 'close'): void;
+
   (e: 'autoRefreshChange', enabled: boolean, interval: number): void;
 }
 
 const emit = defineEmits<Emits>();
 
-const { settings, resetSettings } = useSettings();
+const {settings, resetSettings} = useSettings();
 
 function onAutoRefreshChange() {
   emit('autoRefreshChange', settings.value.autoRefresh, settings.value.refreshInterval);
@@ -132,7 +133,6 @@ function onAutoRefreshChange() {
   border-radius: 12px;
   border: 1px solid #e2e8f0;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  max-width: 480px;
   margin: 24px auto;
   overflow: hidden;
 }
@@ -171,7 +171,6 @@ function onAutoRefreshChange() {
 
 .settings-content {
   padding: 24px;
-  max-height: 500px;
   overflow-y: auto;
 }
 
@@ -287,35 +286,4 @@ function onAutoRefreshChange() {
   border-color: #2f855a;
 }
 
-/* 响应式设计 */
-@media (max-width: 480px) {
-  .settings-panel {
-    margin: 16px;
-    max-width: none;
-  }
-
-  .settings-header, .settings-content, .settings-footer {
-    padding: 16px;
-  }
-
-  .setting-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .number-input {
-    width: 100%;
-    max-width: 120px;
-  }
-
-  .settings-footer {
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .reset-btn, .save-btn {
-    width: 100%;
-  }
-}
 </style>

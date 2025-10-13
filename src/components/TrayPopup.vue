@@ -5,15 +5,15 @@
       <div class="section-title alert-title">⚠️ 高CPU使用率警告</div>
       <div class="process-list-container">
         <ProcessList
-          :processes="arrangedAlertProcesses"
-          :compact="true"
-          :isPinnedProcess="isPinnedAlertProcess"
-          :getRealRank="getRealAlertRank"
-          :getCpuUsageClass="getCpuUsageClass"
-          :pinProcess="pinAlertProcess"
-          :terminateProcess="handleAlertTerminate"
-          :forceKillProcess="handleAlertForceKill"
-          :restartProcess="restartProcess"
+            :processes="arrangedAlertProcesses"
+            :compact="true"
+            :isPinnedProcess="isPinnedAlertProcess"
+            :getRealRank="getRealAlertRank"
+            :getCpuUsageClass="getCpuUsageClass"
+            :pinProcess="pinAlertProcess"
+            :terminateProcess="handleAlertTerminate"
+            :forceKillProcess="handleAlertForceKill"
+            :restartProcess="restartProcess"
         />
       </div>
 
@@ -31,15 +31,15 @@
       <div class="section-title">📊 CPU占用前10进程</div>
       <div class="process-list-container">
         <ProcessList
-          :processes="processes"
-          :compact="true"
-          :isPinnedProcess="isPinnedProcess"
-          :getRealRank="getRealRank"
-          :getCpuUsageClass="getCpuUsageClass"
-          :pinProcess="pinProcess"
-          :terminateProcess="terminateProcess"
-          :forceKillProcess="forceKillProcess"
-          :restartProcess="restartProcess"
+            :processes="processes"
+            :compact="true"
+            :isPinnedProcess="isPinnedProcess"
+            :getRealRank="getRealRank"
+            :getCpuUsageClass="getCpuUsageClass"
+            :pinProcess="pinProcess"
+            :terminateProcess="terminateProcess"
+            :forceKillProcess="forceKillProcess"
+            :restartProcess="restartProcess"
         />
       </div>
     </template>
@@ -47,14 +47,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import { useProcesses, type ProcessInfo } from '../composables/useProcesses';
-import { useSettings } from '../composables/useSettings';
-import { useHighCpuMonitor } from '../composables/useHighCpuMonitor';
+import {computed, onMounted, onUnmounted, ref, watch} from 'vue';
+import {type ProcessInfo, useProcesses} from '../composables/useProcesses';
+import {useSettings} from '../composables/useSettings';
+import {useHighCpuMonitor} from '../composables/useHighCpuMonitor';
 import ProcessList from './ProcessList.vue';
 
 // 设置管理
-const { settings } = useSettings();
+const {settings} = useSettings();
 
 // 进程管理
 const {
@@ -165,7 +165,7 @@ watch(processes, (newProcesses) => {
   if (newProcesses.length > 0) {
     monitorHighCpu(newProcesses, settings.value);
   }
-}, { deep: true });
+}, {deep: true});
 
 onMounted(() => {
   startAutoRefresh();
@@ -258,7 +258,11 @@ onUnmounted(() => {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 </style>

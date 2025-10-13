@@ -6,37 +6,35 @@
     </div>
 
     <div class="alert-content">
-      <p class="alert-description">
-        以下进程CPU使用率持续过高，建议检查或终止：
-      </p>
+
+      <div class="alert-description">
+        <div class="duration-info">
+          检测到 {{ alertProcesses.length }} 个高CPU进程
+        </div>
+        <span style="flex: 1;"></span>
+        <button @click="clearAllAlerts" class="dismiss-btn">
+          忽略所有警告
+        </button>
+      </div>
 
       <ProcessList
-        :processes="arrangedAlertProcesses"
-        :compact="true"
-        :isPinnedProcess="isPinnedAlertProcess"
-        :getRealRank="getRealAlertRank"
-        :getCpuUsageClass="getCpuUsageClass"
-        :pinProcess="pinAlertProcess"
-        :terminateProcess="handleTerminateProcess"
-        :forceKillProcess="handleForceKillProcess"
-        :restartProcess="restartProcess"
+          :processes="arrangedAlertProcesses"
+          :compact="true"
+          :isPinnedProcess="isPinnedAlertProcess"
+          :getRealRank="getRealAlertRank"
+          :getCpuUsageClass="getCpuUsageClass"
+          :pinProcess="pinAlertProcess"
+          :terminateProcess="handleTerminateProcess"
+          :forceKillProcess="handleForceKillProcess"
+          :restartProcess="restartProcess"
       />
-    </div>
-
-    <div class="alert-footer">
-      <div class="duration-info">
-        检测到 {{ alertProcesses.length }} 个高CPU进程
-      </div>
-      <button @click="clearAllAlerts" class="dismiss-btn">
-        忽略所有警告
-      </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import type { ProcessInfo } from '../composables/useProcesses';
+import {computed, ref} from 'vue';
+import type {ProcessInfo} from '../composables/useProcesses';
 import ProcessList from './ProcessList.vue';
 
 interface Props {
@@ -50,6 +48,7 @@ interface Props {
 
 interface Emits {
   (e: 'clearAlert', pid: number): void;
+
   (e: 'clearAllAlerts'): void;
 }
 
@@ -164,7 +163,7 @@ function clearAllAlerts() {
   align-items: center;
   padding-bottom: 12px;
   border-bottom: 1px solid rgba(239, 68, 68, 0.2);
-  margin-bottom: 16px;
+  margin-bottom: 6px;
 }
 
 .alert-header h4 {
@@ -196,28 +195,16 @@ function clearAllAlerts() {
 }
 
 .alert-description {
-  margin: 0 0 16px 0;
-  font-size: 13px;
-  color: #7c2d12;
-  background: rgba(239, 68, 68, 0.05);
-  padding: 8px 12px;
-  border-radius: 6px;
-  border-left: 3px solid #dc2626;
-}
-
-.alert-footer {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 12px;
-  border-top: 1px solid rgba(239, 68, 68, 0.2);
-  margin-top: 16px;
+  margin: 0 0 6px 0;
+  font-size: 13px;
+  border-radius: 6px;
 }
 
 .duration-info {
+  display: flex;
+  align-items: center;
   font-size: 12px;
-  color: #7c2d12;
-  font-weight: 500;
 }
 
 .dismiss-btn {
