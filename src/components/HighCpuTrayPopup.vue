@@ -9,6 +9,7 @@
         :getCpuUsageClass="getCpuUsageClass"
         @clearAlert="clearAlert"
         @clearAllAlerts="clearAllAlerts"
+        @disablePopup="disablePopup"
     />
   </div>
 </template>
@@ -57,6 +58,12 @@ onMounted(() => {
 onUnmounted(() => {
   stopAutoRefresh();
 });
+
+function disablePopup() {
+  settings.value.enableHighCpuPopup = false;
+  // 关闭当前页面
+}
+
 </script>
 
 <style scoped>

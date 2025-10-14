@@ -122,6 +122,7 @@ watch(processes, (newProcesses) => {
 
 // 监听设置变化，立即更新托盘显示
 watch(settings, async (newSettings) => {
+  console.log("settings: ", newSettings)
   try {
     await updateTrayDisplay(newSettings);
   } catch (error) {

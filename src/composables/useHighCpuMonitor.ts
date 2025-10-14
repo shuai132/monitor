@@ -6,7 +6,7 @@ import {invoke} from "@tauri-apps/api/core";
 interface HighCpuProcess {
     process: ProcessInfo;
     startTime: number; // 开始时间戳
-    duration: number; // 持续时间（分钟）
+    duration: number; // 持续时间（秒）
 }
 
 export function useHighCpuMonitor() {
@@ -25,7 +25,7 @@ export function useHighCpuMonitor() {
         }
 
         const currentTime = Date.now();
-        const thresholdMs = settings.highCpuDuration * 60 * 1000; // 转换为毫秒
+        const thresholdMs = settings.highCpuDuration * 1000; // 转换为毫秒
 
         // 检查当前高CPU进程
         const currentHighCpuPids = new Set<number>();
@@ -38,7 +38,7 @@ export function useHighCpuMonitor() {
                     // 更新现有进程的持续时间
                     const existing = highCpuProcesses.value.get(process.pid)!;
                     existing.process = process; // 更新进程信息
-                    existing.duration = (currentTime - existing.startTime) / (60 * 1000); // 转换为分钟
+                    existing.duration = (currentTime - existing.startTime) / 1000; // 转换为秒
                 } else {
                     // 新的高CPU进程
                     highCpuProcesses.value.set(process.pid, {
@@ -86,13 +86,13 @@ export function useHighCpuMonitor() {
         alertProcesses.value = [];
     }
 
-    // 获取进程的持续时间（分钟）
+    // 获取进程的持续时间（秒）
     function getProcessDuration(pid: number): number {
         const highCpuProcess = highCpuProcesses.value.get(pid);
         if (!highCpuProcess) return 0;
 
         const currentTime = Date.now();
-        return (currentTime - highCpuProcess.startTime) / (60 * 1000);
+        return (currentTime - highCpuProcess.startTime) / 1000;
     }
 
     return {

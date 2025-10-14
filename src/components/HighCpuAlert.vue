@@ -13,7 +13,7 @@
         </div>
         <span style="flex: 1;"></span>
         <button @click="disablePopup" class="dismiss-btn">
-          🔇 关闭弹窗
+          关闭弹窗
         </button>
       </div>
 
@@ -36,6 +36,9 @@
 import {computed, ref} from 'vue';
 import type {ProcessInfo} from '../composables/useProcesses';
 import ProcessList from './ProcessList.vue';
+import {useSettings} from "../composables/useSettings.ts";
+
+const {settings} = useSettings();
 
 interface Props {
   alertProcesses: ProcessInfo[];
@@ -144,10 +147,18 @@ function clearAllAlerts() {
   emit('clearAllAlerts');
 }
 
-function disablePopup() {
+async function disablePopup() {
   // 关闭高CPU警告弹窗
   clearPinnedAlertProcess();
   emit('disablePopup');
+
+  // 调用后端隐藏高CPU警告窗口
+  try {
+    const {invoke} = await import('@tauri-apps/api/core');
+    await invoke('hide_high_cpu_alert');
+  } catch (error) {
+    console.error('关闭高CPU警告窗口失败:', error);
+  }
 }
 </script>
 

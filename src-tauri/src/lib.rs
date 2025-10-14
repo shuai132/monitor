@@ -39,7 +39,7 @@ impl Default for AppSettings {
             tray_display_mode: "always".to_string(),
             high_cpu_alert: true,
             high_cpu_threshold: 100.0,
-            high_cpu_duration: 5,
+            high_cpu_duration: 30, // 改为30秒
             enable_high_cpu_popup: false,
         }
     }

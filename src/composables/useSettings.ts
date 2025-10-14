@@ -5,10 +5,10 @@ export interface AppSettings {
     refreshInterval: number; // 秒
     trayShowProcess: boolean;
     trayShowPercentage: boolean;
-    trayDisplayMode: string; // "always" 或 "warning-only"
+    trayDisplayMode: "always" | "warning-only";
     highCpuAlert: boolean;
     highCpuThreshold: number; // 百分比
-    highCpuDuration: number; // 分钟
+    highCpuDuration: number; // 秒
     enableHighCpuPopup: boolean; // 是否启用高CPU警告弹窗
 }
 
@@ -17,10 +17,10 @@ const defaultSettings: AppSettings = {
     refreshInterval: 2,
     trayShowProcess: true,
     trayShowPercentage: true,
-    trayDisplayMode: 'always',
+    trayDisplayMode: 'warning-only',
     highCpuAlert: true,
     highCpuThreshold: 100,
-    highCpuDuration: 5,
+    highCpuDuration: 60 * 5, // 5分钟
     enableHighCpuPopup: false // 默认关闭弹窗
 };
 
