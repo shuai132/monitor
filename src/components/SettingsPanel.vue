@@ -38,14 +38,14 @@
         <h4>📋 托盘显示</h4>
 
         <div class="setting-item">
-          <label class="setting-label">托盘显示模式</label>
+          <label class="setting-label">状态栏标题内容</label>
           <select v-model="settings.trayDisplayMode" class="select-input">
-            <option value="warning-only">仅警告时显示进程</option>
-            <option value="always">总是显示最高CPU进程</option>
+            <option value="warning-only">持续高CPU占用进程</option>
+            <option value="always">最高CPU占用进程</option>
           </select>
         </div>
 
-        <div v-if="settings.trayDisplayMode === 'always'" class="sub-settings">
+        <div class="sub-settings">
           <div class="setting-item">
             <label class="setting-label">
               <input

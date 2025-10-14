@@ -9,6 +9,9 @@ use tauri::{
 };
 use tokio::time::interval;
 
+// 常量定义
+const TRAY_TITLE_DEFAULT: &str = "";
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProcessInfo {
     pub name: String,
@@ -230,14 +233,14 @@ fn update_tray_display(tray: &tauri::tray::TrayIcon, processes: &[ProcessInfo], 
                 }
 
                 let title = if title_parts.is_empty() {
-                    "CPU监控器".to_string()
+                    TRAY_TITLE_DEFAULT.to_string()
                 } else {
                     title_parts.join(": ")
                 };
 
                 tray.set_title(Some(&title))?;
             } else {
-                tray.set_title(Some("CPU监控器"))?;
+                tray.set_title(Some(TRAY_TITLE_DEFAULT))?;
             }
         }
         "warning-only" => {
@@ -253,11 +256,12 @@ fn update_tray_display(tray: &tauri::tray::TrayIcon, processes: &[ProcessInfo], 
                     let title = format!("{}: {:.1}%", process_name, top_process.cpu_usage);
                     tray.set_title(Some(&title))?;
                 } else {
-                    // 无警告时标题为空
-                    tray.set_title(Option::<&str>::None)?;
+                    // 无警告时显示默认标题
+                    tray.set_title(Some(TRAY_TITLE_DEFAULT))?;
                 }
             } else {
-                tray.set_title(Option::<&str>::None)?;
+                // 没有进程数据时显示默认标题
+                tray.set_title(Some(TRAY_TITLE_DEFAULT))?;
             }
         }
         _ => {
@@ -271,7 +275,7 @@ fn update_tray_display(tray: &tauri::tray::TrayIcon, processes: &[ProcessInfo], 
                 let title = format!("{}: {:.1}%", process_name, top_process.cpu_usage);
                 tray.set_title(Some(&title))?;
             } else {
-                tray.set_title(Some("CPU监控器"))?;
+                tray.set_title(Some(TRAY_TITLE_DEFAULT))?;
             }
         }
     }
