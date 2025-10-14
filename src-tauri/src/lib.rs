@@ -15,6 +15,18 @@ pub struct ProcessInfo {
     pub cpu_usage: f32,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AppSettings {
+    pub auto_refresh: bool,
+    pub refresh_interval: u32,
+    pub tray_show_process: bool,
+    pub tray_show_percentage: bool,
+    pub tray_display_mode: String, // "always" or "warning-only"
+    pub high_cpu_alert: bool,
+    pub high_cpu_threshold: f32,
+    pub high_cpu_duration: u32,
+}
+
 
 #[tauri::command]
 async fn get_top_cpu_processes() -> Result<Vec<ProcessInfo>, String> {
@@ -134,6 +146,90 @@ async fn show_high_cpu_alert(app_handle: AppHandle) -> Result<(), String> {
 async fn hide_high_cpu_alert(app_handle: AppHandle) -> Result<(), String> {
     if let Some(alert_window) = app_handle.get_webview_window("high-cpu-alert") {
         let _ = alert_window.hide();
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn update_tray_with_settings(app_handle: AppHandle, settings: AppSettings) -> Result<(), String> {
+    if let Ok(processes) = get_top_cpu_processes().await {
+        if let Some(tray) = app_handle.tray_by_id("main-tray") {
+            update_tray_display(&tray, &processes, &settings).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
+fn update_tray_display(tray: &tauri::tray::TrayIcon, processes: &[ProcessInfo], settings: &AppSettings) -> Result<(), Box<dyn std::error::Error>> {
+    let tooltip_text = generate_tooltip_text(processes);
+    tray.set_tooltip(Some(tooltip_text))?;
+
+    match settings.tray_display_mode.as_str() {
+        "always" => {
+            // 总是显示最高CPU进程
+            if let Some(top_process) = processes.first() {
+                let mut title_parts = Vec::new();
+
+                if settings.tray_show_process {
+                    // 限制进程名称长度，避免托盘标题过长
+                    let process_name = if top_process.name.len() > 12 {
+                        format!("{}...", &top_process.name[..9])
+                    } else {
+                        top_process.name.clone()
+                    };
+                    title_parts.push(process_name);
+                }
+
+                if settings.tray_show_percentage {
+                    title_parts.push(format!("{:.1}%", top_process.cpu_usage));
+                }
+
+                let title = if title_parts.is_empty() {
+                    "CPU监控器".to_string()
+                } else {
+                    title_parts.join(": ")
+                };
+
+                tray.set_title(Some(&title))?;
+            } else {
+                tray.set_title(Some("CPU监控器"))?;
+            }
+        }
+        "warning-only" => {
+            // 仅在警告时显示进程
+            if let Some(top_process) = processes.first() {
+                if settings.high_cpu_alert && top_process.cpu_usage >= settings.high_cpu_threshold {
+                    // 有警告时显示最高CPU进程
+                    let process_name = if top_process.name.len() > 12 {
+                        format!("{}...", &top_process.name[..9])
+                    } else {
+                        top_process.name.clone()
+                    };
+                    let title = format!("{}: {:.1}%", process_name, top_process.cpu_usage);
+                    tray.set_title(Some(&title))?;
+                } else {
+                    // 无警告时标题为空
+                    tray.set_title(Option::<&str>::None)?;
+                }
+            } else {
+                tray.set_title(Option::<&str>::None)?;
+            }
+        }
+        _ => {
+            // 默认行为，兼容旧设置
+            if let Some(top_process) = processes.first() {
+                let process_name = if top_process.name.len() > 12 {
+                    format!("{}...", &top_process.name[..9])
+                } else {
+                    top_process.name.clone()
+                };
+                let title = format!("{}: {:.1}%", process_name, top_process.cpu_usage);
+                tray.set_title(Some(&title))?;
+            } else {
+                tray.set_title(Some("CPU监控器"))?;
+            }
+        }
     }
 
     Ok(())
@@ -323,25 +419,21 @@ async fn update_tray_info(app_handle: AppHandle) {
 
         if let Ok(processes) = get_top_cpu_processes().await {
             if let Some(tray) = app_handle.tray_by_id("main-tray") {
-                if let Some(top_process) = processes.first() {
-                    // 限制进程名称长度，避免托盘标题过长
-                    let process_name = if top_process.name.len() > 12 {
-                        format!("{}...", &top_process.name[..9])
-                    } else {
-                        top_process.name.clone()
-                    };
+                // 使用默认设置进行基本的托盘更新
+                // 前端会通过 update_tray_with_settings 命令来更新具体的显示方式
+                let default_settings = AppSettings {
+                    auto_refresh: true,
+                    refresh_interval: 3,
+                    tray_show_process: true,
+                    tray_show_percentage: true,
+                    tray_display_mode: "always".to_string(),
+                    high_cpu_alert: true,
+                    high_cpu_threshold: 100.0,
+                    high_cpu_duration: 5,
+                };
 
-                    // 设置托盘图标标题为最高CPU占用的进程
-                    let title = format!("{}: {:.1}%", process_name, top_process.cpu_usage);
-                    let _ = tray.set_title(Some(&title));
-
-                    // 设置详细的工具提示
-                    let tooltip_text = generate_tooltip_text(&processes);
-                    let _ = tray.set_tooltip(Some(tooltip_text));
-                } else {
-                    let _ = tray.set_title(Some("CPU监控器"));
-                    let _ = tray.set_tooltip(Some("暂无进程数据"));
-                }
+                // 使用默认设置更新托盘显示，前端设置会覆盖这些
+                let _ = update_tray_display(&tray, &processes, &default_settings);
             }
         }
     }
@@ -357,7 +449,8 @@ pub fn run() {
             force_kill_process,
             restart_process,
             show_high_cpu_alert,
-            hide_high_cpu_alert
+            hide_high_cpu_alert,
+            update_tray_with_settings
         ])
         .setup(|app| {
             let app_handle = app.app_handle().clone();

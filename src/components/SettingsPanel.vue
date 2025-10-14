@@ -38,23 +38,33 @@
         <h4>📋 托盘显示</h4>
 
         <div class="setting-item">
-          <label class="setting-label">
-            <input
-                type="checkbox"
-                v-model="settings.trayShowProcess"
-            />
-            显示进程名称
-          </label>
+          <label class="setting-label">托盘显示模式</label>
+          <select v-model="settings.trayDisplayMode" class="select-input">
+            <option value="always">总是显示最高CPU进程</option>
+            <option value="warning-only">仅警告时显示进程</option>
+          </select>
         </div>
 
-        <div class="setting-item">
-          <label class="setting-label">
-            <input
-                type="checkbox"
-                v-model="settings.trayShowPercentage"
-            />
-            显示CPU百分比
-          </label>
+        <div v-if="settings.trayDisplayMode === 'always'" class="sub-settings">
+          <div class="setting-item">
+            <label class="setting-label">
+              <input
+                  type="checkbox"
+                  v-model="settings.trayShowProcess"
+              />
+              显示进程名称
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <label class="setting-label">
+              <input
+                  type="checkbox"
+                  v-model="settings.trayShowPercentage"
+              />
+              显示CPU百分比
+            </label>
+          </div>
         </div>
       </div>
 
@@ -228,6 +238,23 @@ function onAutoRefreshChange() {
 }
 
 .number-input:focus {
+  outline: none;
+  border-color: #3182ce;
+  box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+}
+
+.select-input {
+  padding: 6px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+  min-width: 200px;
+  transition: border-color 0.2s ease;
+}
+
+.select-input:focus {
   outline: none;
   border-color: #3182ce;
   box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);

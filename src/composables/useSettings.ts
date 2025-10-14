@@ -5,6 +5,7 @@ export interface AppSettings {
     refreshInterval: number; // 秒
     trayShowProcess: boolean;
     trayShowPercentage: boolean;
+    trayDisplayMode: 'always' | 'warning-only'; // 托盘显示模式
     highCpuAlert: boolean;
     highCpuThreshold: number; // 百分比
     highCpuDuration: number; // 分钟
@@ -15,6 +16,7 @@ const defaultSettings: AppSettings = {
     refreshInterval: 2,
     trayShowProcess: true,
     trayShowPercentage: true,
+    trayDisplayMode: 'always',
     highCpuAlert: true,
     highCpuThreshold: 100,
     highCpuDuration: 5

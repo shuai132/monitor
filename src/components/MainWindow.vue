@@ -66,6 +66,7 @@ import {onMounted, onUnmounted, ref, watch} from 'vue';
 import {useProcesses} from '../composables/useProcesses';
 import {useSettings} from '../composables/useSettings';
 import {useHighCpuMonitor} from '../composables/useHighCpuMonitor';
+import {useTrayUpdater} from '../composables/useTrayUpdater';
 import ProcessList from './ProcessList.vue';
 import SettingsPanel from './SettingsPanel.vue';
 import HighCpuAlert from './HighCpuAlert.vue';
@@ -103,6 +104,9 @@ const {
   getProcessDuration
 } = useHighCpuMonitor();
 
+// 托盘更新器
+const { updateTrayDisplay } = useTrayUpdater();
+
 // 处理设置变化
 function handleAutoRefreshChange(enabled: boolean, interval: number) {
   updateAutoRefresh(enabled, interval);
@@ -114,6 +118,15 @@ watch(processes, (newProcesses) => {
     monitorHighCpu(newProcesses, settings.value);
   }
 }, {deep: true});
+
+// 监听设置变化，立即更新托盘显示
+watch(settings, async (newSettings) => {
+  try {
+    await updateTrayDisplay(newSettings);
+  } catch (error) {
+    console.error('更新托盘显示失败:', error);
+  }
+}, { deep: true });
 
 onMounted(() => {
   startAutoRefresh();
