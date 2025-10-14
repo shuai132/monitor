@@ -21,10 +21,9 @@ const defaultSettings: AppSettings = {
 };
 
 const SETTINGS_KEY = 'cpu-monitor-settings';
+const settings = ref<AppSettings>({...defaultSettings});
 
 export function useSettings() {
-    const settings = ref<AppSettings>({...defaultSettings});
-
     // 从本地存储加载设置
     function loadSettings() {
         try {

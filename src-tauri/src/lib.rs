@@ -114,10 +114,10 @@ async fn show_high_cpu_alert(app_handle: AppHandle) -> Result<(), String> {
             // 重新计算位置，确保在正确的位置显示
             let (screen_width, screen_height) = get_screen_size();
             let popup_width = 420.0;
-            let popup_height = 600.0;
+            let popup_height = 200.0;
             let (x, y) = calculate_tray_popup_position(screen_width, screen_height, popup_width, popup_height);
-            let alert_x = x - 50.0; // 向左偏移
-            let alert_y = y + 50.0; // 向下偏移
+            let alert_x = x + 0.0;
+            let alert_y = y + 10.0;
 
             let _ = alert_window.set_position(Position::Logical(LogicalPosition::new(alert_x, alert_y)));
             let _ = alert_window.show();
@@ -206,15 +206,15 @@ fn create_high_cpu_alert(app: AppHandle) -> Result<(), Box<dyn std::error::Error
 
     // 获取屏幕尺寸来计算位置
     let popup_width = 420.0;
-    let popup_height = 600.0;
+    let popup_height = 200.0;
 
     // 获取主显示器的尺寸
     let (screen_width, screen_height) = get_screen_size();
 
     // 计算高CPU警告弹窗位置（稍微偏移，避免与托盘弹窗重叠）
     let (x, y) = calculate_tray_popup_position(screen_width, screen_height, popup_width, popup_height);
-    let alert_x = x - 50.0; // 向左偏移
-    let alert_y = y + 50.0; // 向下偏移
+    let alert_x = x + 0.0;
+    let alert_y = y + 10.0;
 
     println!("High CPU Alert position: ({}, {})", alert_x, alert_y);
 
@@ -229,6 +229,7 @@ fn create_high_cpu_alert(app: AppHandle) -> Result<(), Box<dyn std::error::Error
         .always_on_top(true)
         .decorations(false)  // 无边框窗口
         .shadow(true)        // 添加阴影
+        .focusable(false)
         .focused(false)
         .build()?;
 
