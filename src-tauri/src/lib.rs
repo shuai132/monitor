@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::process::Command;
-use std::time::Duration;
 use std::sync::{Arc, RwLock};
-use sysinfo::{System, Pid, Signal, ProcessesToUpdate};
+use std::time::Duration;
+use sysinfo::{Pid, ProcessesToUpdate, Signal, System};
 use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, WindowEvent, Position, LogicalPosition, State,
+    AppHandle, LogicalPosition, Manager, Position, State, WindowEvent,
 };
 use tokio::time::interval;
 
@@ -26,6 +26,7 @@ pub struct AppSettings {
     pub high_cpu_alert: bool,
     pub high_cpu_threshold: f32,
     pub high_cpu_duration: u32,
+    pub enable_high_cpu_popup: bool,
 }
 
 impl Default for AppSettings {
@@ -39,6 +40,7 @@ impl Default for AppSettings {
             high_cpu_alert: true,
             high_cpu_threshold: 100.0,
             high_cpu_duration: 5,
+            enable_high_cpu_popup: false,
         }
     }
 }
@@ -138,7 +140,19 @@ async fn restart_process(process_name: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-async fn show_high_cpu_alert(app_handle: AppHandle) -> Result<(), String> {
+async fn show_high_cpu_alert(app_handle: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+    // 首先检查是否启用了高CPU警告弹窗
+    let settings = if let Ok(settings) = state.settings.read() {
+        settings.clone()
+    } else {
+        return Err("无法读取应用设置".to_string());
+    };
+
+    // 如果用户没有启用高CPU警告弹窗，直接返回
+    if !settings.enable_high_cpu_popup {
+        return Ok(());
+    }
+
     // 检查是否已经有高CPU警告弹窗存在
     if let Some(alert_window) = app_handle.get_webview_window("high-cpu-alert") {
         let is_visible = alert_window.is_visible().unwrap_or(false);
@@ -174,7 +188,7 @@ async fn hide_high_cpu_alert(app_handle: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 async fn update_tray_with_settings(app_handle: AppHandle, settings: AppSettings, state: State<'_, AppState>) -> Result<(), String> {
-    println!("Updating tray display with settings: {:?}", settings);
+    println!("update_tray_with_settings: {:?}", settings);
 
     // 更新全局设置状态
     if let Ok(mut global_settings) = state.settings.write() {
@@ -191,7 +205,7 @@ async fn update_tray_with_settings(app_handle: AppHandle, settings: AppSettings,
 }
 
 fn update_tray_display(tray: &tauri::tray::TrayIcon, processes: &[ProcessInfo], settings: &AppSettings) -> Result<(), Box<dyn std::error::Error>> {
-    println!("2 Updating tray display with settings: {:?}", settings);
+    println!("update_tray_display: {:?}", settings);
     let tooltip_text = generate_tooltip_text(processes);
     tray.set_tooltip(Some(tooltip_text))?;
 
@@ -286,7 +300,7 @@ fn generate_tooltip_text(processes: &[ProcessInfo]) -> String {
 }
 
 fn create_tray_popup(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-    use tauri::{WebviewWindowBuilder, WebviewUrl};
+    use tauri::{WebviewUrl, WebviewWindowBuilder};
 
     // 获取屏幕尺寸来计算位置
     let popup_width = 420.0;
@@ -328,7 +342,7 @@ fn create_tray_popup(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn create_high_cpu_alert(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-    use tauri::{WebviewWindowBuilder, WebviewUrl};
+    use tauri::{WebviewUrl, WebviewWindowBuilder};
 
     // 获取屏幕尺寸来计算位置
     let popup_width = 420.0;
@@ -422,7 +436,7 @@ fn calculate_tray_popup_position(screen_width: f64, screen_height: f64, popup_wi
 
 #[cfg(target_os = "macos")]
 fn get_screen_size() -> (f64, f64) {
-    use core_graphics::display::{CGDisplay, CGDirectDisplayID};
+    use core_graphics::display::{CGDirectDisplayID, CGDisplay};
 
     // 获取主显示器
     let display_id: CGDirectDisplayID = CGDisplay::main().id;

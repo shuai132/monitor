@@ -20,7 +20,7 @@
 
     <!-- 高CPU警告弹窗 -->
     <HighCpuAlert
-        v-if="shouldShowAlert && !showSettings"
+        v-if="shouldShowAlert && !showSettings && settings.enableHighCpuPopup"
         :alertProcesses="alertProcesses"
         :getProcessDuration="getProcessDuration"
         :terminateProcess="terminateProcess"
@@ -29,6 +29,7 @@
         :getCpuUsageClass="getCpuUsageClass"
         @clearAlert="clearAlert"
         @clearAllAlerts="clearAllAlerts"
+        @disablePopup="disablePopup"
     />
 
     <!-- 消息提示 -->
@@ -105,7 +106,7 @@ const {
 } = useHighCpuMonitor();
 
 // 托盘更新器
-const { updateTrayDisplay } = useTrayUpdater();
+const {updateTrayDisplay} = useTrayUpdater();
 
 // 处理设置变化
 function handleAutoRefreshChange(enabled: boolean, interval: number) {
@@ -126,7 +127,14 @@ watch(settings, async (newSettings) => {
   } catch (error) {
     console.error('更新托盘显示失败:', error);
   }
-}, { deep: true });
+}, {deep: true});
+
+// 关闭高CPU警告弹窗
+function disablePopup() {
+  settings.value.enableHighCpuPopup = false;
+  // 同时清除所有当前警告
+  clearAllAlerts();
+}
 
 // 初始化时同步设置到后端
 async function initializeBackendSettings() {

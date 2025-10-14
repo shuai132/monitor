@@ -12,8 +12,8 @@
           检测到 {{ alertProcesses.length }} 个高CPU进程
         </div>
         <span style="flex: 1;"></span>
-        <button @click="clearAllAlerts" class="dismiss-btn">
-          忽略所有警告
+        <button @click="disablePopup" class="dismiss-btn">
+          🔇 关闭弹窗
         </button>
       </div>
 
@@ -50,6 +50,8 @@ interface Emits {
   (e: 'clearAlert', pid: number): void;
 
   (e: 'clearAllAlerts'): void;
+
+  (e: 'disablePopup'): void;
 }
 
 const props = defineProps<Props>();
@@ -140,6 +142,12 @@ function clearAllAlerts() {
   // 清除所有警告时，也清除固定状态
   clearPinnedAlertProcess();
   emit('clearAllAlerts');
+}
+
+function disablePopup() {
+  // 关闭高CPU警告弹窗
+  clearPinnedAlertProcess();
+  emit('disablePopup');
 }
 </script>
 

@@ -104,6 +104,16 @@
                 class="number-input"
             />
           </div>
+
+          <div class="setting-item">
+            <label class="setting-label">
+              <input
+                  type="checkbox"
+                  v-model="settings.enableHighCpuPopup"
+              />
+              启用高CPU警告弹窗
+            </label>
+          </div>
         </div>
       </div>
     </div>
@@ -120,11 +130,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, type Ref } from 'vue';
-import {useSettings, type AppSettings} from '../composables/useSettings';
+import {type Ref} from 'vue';
+import {type AppSettings, useSettings} from '../composables/useSettings';
 
 interface Emits {
   (e: 'close'): void;
+
   (e: 'autoRefreshChange', enabled: boolean, interval: number): void;
 }
 

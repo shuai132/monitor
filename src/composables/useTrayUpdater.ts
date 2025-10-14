@@ -1,5 +1,5 @@
-import { invoke } from '@tauri-apps/api/core';
-import { AppSettings } from './useSettings';
+import {invoke} from '@tauri-apps/api/core';
+import {AppSettings} from './useSettings';
 
 export interface RustAppSettings {
     auto_refresh: boolean;
@@ -31,7 +31,7 @@ export function useTrayUpdater() {
     async function updateTrayDisplay(settings: AppSettings): Promise<void> {
         try {
             const rustSettings = convertToRustSettings(settings);
-            await invoke('update_tray_with_settings', { settings: rustSettings });
+            await invoke('update_tray_with_settings', {settings: rustSettings});
         } catch (error) {
             console.error('更新托盘显示失败:', error);
             throw error;
