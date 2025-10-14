@@ -498,6 +498,17 @@ pub fn run() {
         .setup(|app| {
             let app_handle = app.app_handle().clone();
 
+            // 在macOS上隐藏Dock图标
+            #[cfg(target_os = "macos")]
+            {
+                use tauri::utils::platform;
+                if let Err(e) = platform::current_exe() {
+                    println!("获取可执行文件路径失败: {}", e);
+                } else {
+                    app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+                }
+            }
+
             // 初始化应用状态
             let app_state = AppState {
                 settings: Arc::new(RwLock::new(AppSettings::default())),
