@@ -120,11 +120,11 @@
 </template>
 
 <script setup lang="ts">
-import {useSettings} from '../composables/useSettings';
+import { ref, type Ref } from 'vue';
+import {useSettings, type AppSettings} from '../composables/useSettings';
 
 interface Emits {
   (e: 'close'): void;
-
   (e: 'autoRefreshChange', enabled: boolean, interval: number): void;
 }
 
@@ -132,8 +132,11 @@ const emit = defineEmits<Emits>();
 
 const {settings, resetSettings} = useSettings();
 
+// 显式类型声明来帮助TypeScript推断
+const typedSettings: Ref<AppSettings> = settings;
+
 function onAutoRefreshChange() {
-  emit('autoRefreshChange', settings.value.autoRefresh, settings.value.refreshInterval);
+  emit('autoRefreshChange', typedSettings.value.autoRefresh, typedSettings.value.refreshInterval);
 }
 </script>
 

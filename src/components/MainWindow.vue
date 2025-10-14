@@ -128,8 +128,20 @@ watch(settings, async (newSettings) => {
   }
 }, { deep: true });
 
+// 初始化时同步设置到后端
+async function initializeBackendSettings() {
+  try {
+    await updateTrayDisplay(settings.value);
+    console.log('已将前端设置同步到后端:', settings.value);
+  } catch (error) {
+    console.error('初始化后端设置失败:', error);
+  }
+}
+
 onMounted(() => {
   startAutoRefresh();
+  // 延迟一点时间确保后端已经准备好
+  setTimeout(initializeBackendSettings, 1000);
 });
 
 onUnmounted(() => {

@@ -1,10 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::process::Command;
 use std::time::Duration;
+use std::sync::{Arc, RwLock};
 use sysinfo::{System, Pid, Signal, ProcessesToUpdate};
 use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, WindowEvent, Position, LogicalPosition,
+    AppHandle, Manager, WindowEvent, Position, LogicalPosition, State,
 };
 use tokio::time::interval;
 
@@ -15,7 +16,7 @@ pub struct ProcessInfo {
     pub cpu_usage: f32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AppSettings {
     pub auto_refresh: bool,
     pub refresh_interval: u32,
@@ -25,6 +26,26 @@ pub struct AppSettings {
     pub high_cpu_alert: bool,
     pub high_cpu_threshold: f32,
     pub high_cpu_duration: u32,
+}
+
+impl Default for AppSettings {
+    fn default() -> Self {
+        Self {
+            auto_refresh: true,
+            refresh_interval: 3,
+            tray_show_process: true,
+            tray_show_percentage: true,
+            tray_display_mode: "always".to_string(),
+            high_cpu_alert: true,
+            high_cpu_threshold: 100.0,
+            high_cpu_duration: 5,
+        }
+    }
+}
+
+// 全局设置状态管理
+pub struct AppState {
+    pub settings: Arc<RwLock<AppSettings>>,
 }
 
 
@@ -152,7 +173,15 @@ async fn hide_high_cpu_alert(app_handle: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn update_tray_with_settings(app_handle: AppHandle, settings: AppSettings) -> Result<(), String> {
+async fn update_tray_with_settings(app_handle: AppHandle, settings: AppSettings, state: State<'_, AppState>) -> Result<(), String> {
+    println!("Updating tray display with settings: {:?}", settings);
+
+    // 更新全局设置状态
+    if let Ok(mut global_settings) = state.settings.write() {
+        *global_settings = settings.clone();
+    }
+
+    // 立即更新托盘显示
     if let Ok(processes) = get_top_cpu_processes().await {
         if let Some(tray) = app_handle.tray_by_id("main-tray") {
             update_tray_display(&tray, &processes, &settings).map_err(|e| e.to_string())?;
@@ -162,6 +191,7 @@ async fn update_tray_with_settings(app_handle: AppHandle, settings: AppSettings)
 }
 
 fn update_tray_display(tray: &tauri::tray::TrayIcon, processes: &[ProcessInfo], settings: &AppSettings) -> Result<(), Box<dyn std::error::Error>> {
+    println!("2 Updating tray display with settings: {:?}", settings);
     let tooltip_text = generate_tooltip_text(processes);
     tray.set_tooltip(Some(tooltip_text))?;
 
@@ -411,7 +441,7 @@ fn get_screen_size() -> (f64, f64) {
     (1920.0, 1080.0)
 }
 
-async fn update_tray_info(app_handle: AppHandle) {
+async fn update_tray_info(app_handle: AppHandle, app_state: Arc<RwLock<AppSettings>>) {
     let mut interval = interval(Duration::from_secs(3));
 
     loop {
@@ -419,21 +449,16 @@ async fn update_tray_info(app_handle: AppHandle) {
 
         if let Ok(processes) = get_top_cpu_processes().await {
             if let Some(tray) = app_handle.tray_by_id("main-tray") {
-                // 使用默认设置进行基本的托盘更新
-                // 前端会通过 update_tray_with_settings 命令来更新具体的显示方式
-                let default_settings = AppSettings {
-                    auto_refresh: true,
-                    refresh_interval: 3,
-                    tray_show_process: true,
-                    tray_show_percentage: true,
-                    tray_display_mode: "always".to_string(),
-                    high_cpu_alert: true,
-                    high_cpu_threshold: 100.0,
-                    high_cpu_duration: 5,
+                // 读取当前的设置状态
+                let current_settings = if let Ok(settings) = app_state.read() {
+                    settings.clone()
+                } else {
+                    // 如果读取失败，使用默认设置
+                    AppSettings::default()
                 };
 
-                // 使用默认设置更新托盘显示，前端设置会覆盖这些
-                let _ = update_tray_display(&tray, &processes, &default_settings);
+                // 使用当前设置更新托盘显示
+                let _ = update_tray_display(&tray, &processes, &current_settings);
             }
         }
     }
@@ -454,6 +479,12 @@ pub fn run() {
         ])
         .setup(|app| {
             let app_handle = app.app_handle().clone();
+
+            // 初始化应用状态
+            let app_state = AppState {
+                settings: Arc::new(RwLock::new(AppSettings::default())),
+            };
+            app.manage(app_state);
 
             let _tray = TrayIconBuilder::with_id("main-tray")
                 .tooltip("CPU监控器 - 加载中...")
@@ -525,10 +556,13 @@ pub fn run() {
 
             // 延迟启动后台任务，避免初始化问题
             let app_handle_clone = app_handle.clone();
+            let app_state_clone = app.state::<AppState>();
+            let settings_arc = Arc::clone(&app_state_clone.settings);
+
             tauri::async_runtime::spawn(async move {
                 // 等待应用完全启动
                 tokio::time::sleep(Duration::from_secs(2)).await;
-                update_tray_info(app_handle_clone).await;
+                update_tray_info(app_handle_clone, settings_arc).await;
             });
 
             // 隐藏主窗口，只在托盘中运行
