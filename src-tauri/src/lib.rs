@@ -207,6 +207,13 @@ async fn update_tray_with_settings(app_handle: AppHandle, settings: AppSettings,
     Ok(())
 }
 
+#[tauri::command]
+async fn exit_app(app_handle: AppHandle) -> Result<(), String> {
+    println!("正在退出应用程序...");
+    app_handle.exit(0);
+    Ok(())
+}
+
 fn update_tray_display(tray: &tauri::tray::TrayIcon, processes: &[ProcessInfo], settings: &AppSettings) -> Result<(), Box<dyn std::error::Error>> {
     println!("update_tray_display: {:?}", settings);
     let tooltip_text = generate_tooltip_text(processes);
@@ -493,7 +500,8 @@ pub fn run() {
             restart_process,
             show_high_cpu_alert,
             hide_high_cpu_alert,
-            update_tray_with_settings
+            update_tray_with_settings,
+            exit_app
         ])
         .setup(|app| {
             let app_handle = app.app_handle().clone();

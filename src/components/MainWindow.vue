@@ -6,6 +6,10 @@
         ⚙️ 设置
       </button>
 
+      <button @click="exitApp" class="exit-btn">
+        ⏻ 退出
+      </button>
+
       <button @click="getTopProcesses" :disabled="isLoading" class="refresh-btn">
         🔄 {{ isLoading ? '加载中...' : '手动刷新' }}
       </button>
@@ -137,6 +141,25 @@ function disablePopup() {
   clearAllAlerts();
 }
 
+// 退出应用程序
+async function exitApp() {
+  try {
+    // 调用后端的退出命令
+    const {invoke} = await import('@tauri-apps/api/core');
+    await invoke('exit_app');
+  } catch (error) {
+    console.error('退出应用程序失败:', error);
+    // 备用方法：尝试关闭当前窗口
+    try {
+      const {getCurrentWindow} = await import('@tauri-apps/api/window');
+      const currentWindow = getCurrentWindow();
+      await currentWindow.close();
+    } catch (closeError) {
+      console.error('关闭窗口失败:', closeError);
+    }
+  }
+}
+
 // 初始化时同步设置到后端
 async function initializeBackendSettings() {
   try {
@@ -175,7 +198,7 @@ onUnmounted(() => {
   margin-bottom: 12px;
 }
 
-.refresh-btn, .auto-refresh-btn, .settings-btn {
+.refresh-btn, .auto-refresh-btn, .settings-btn, .exit-btn {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   color: #4a5568;
@@ -192,6 +215,20 @@ onUnmounted(() => {
   background: #f7fafc;
   border-color: #cbd5e0;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* 退出按钮特殊样式 */
+.exit-btn {
+  background: #fff5f5;
+  border-color: #fed7d7;
+  color: #e53e3e;
+}
+
+.exit-btn:hover {
+  background: #feb2b2;
+  border-color: #fc8181;
+  color: #c53030;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
 }
 
 .refresh-btn:disabled {

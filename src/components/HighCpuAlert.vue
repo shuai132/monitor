@@ -36,9 +36,6 @@
 import {computed, ref} from 'vue';
 import type {ProcessInfo} from '../composables/useProcesses';
 import ProcessList from './ProcessList.vue';
-import {useSettings} from "../composables/useSettings.ts";
-
-const {settings} = useSettings();
 
 interface Props {
   alertProcesses: ProcessInfo[];
