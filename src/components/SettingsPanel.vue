@@ -88,8 +88,6 @@
             <input
                 type="number"
                 v-model.number="settings.highCpuThreshold"
-                min="50"
-                max="200"
                 class="number-input"
             />
           </div>
@@ -99,8 +97,6 @@
             <input
                 type="number"
                 v-model.number="settings.highCpuDuration"
-                min="5"
-                max="300"
                 class="number-input"
             />
           </div>

@@ -6,6 +6,7 @@ import {invoke} from "@tauri-apps/api/core";
 interface HighCpuProcess {
     process: ProcessInfo;
     startTime: number; // 开始时间戳
+    lastTime: number; // 上次时间戳
     duration: number; // 持续时间（秒）
 }
 
@@ -38,12 +39,13 @@ export function useHighCpuMonitor() {
                     // 更新现有进程的持续时间
                     const existing = highCpuProcesses.value.get(process.pid)!;
                     existing.process = process; // 更新进程信息
-                    existing.duration = (currentTime - existing.startTime) / 1000; // 转换为秒
+                    existing.duration += (currentTime - existing.startTime) / 1000; // 转换为秒
                 } else {
                     // 新的高CPU进程
                     highCpuProcesses.value.set(process.pid, {
                         process,
                         startTime: currentTime,
+                        lastTime: currentTime,
                         duration: 0
                     });
                 }

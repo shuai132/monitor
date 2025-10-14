@@ -11,7 +11,7 @@ const isHighCpuAlert = ref(false);
 onMounted(async () => {
   // 检测当前窗口类型
   const currentWindow = getCurrentWindow();
-  const label = await currentWindow.label;
+  const label = currentWindow.label;
   isTrayPopup.value = label === 'tray-popup';
   isHighCpuAlert.value = label === 'high-cpu-alert';
 });

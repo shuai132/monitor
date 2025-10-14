@@ -24,7 +24,7 @@
 
     <!-- 高CPU警告弹窗 -->
     <HighCpuAlert
-        v-if="shouldShowAlert && !showSettings && settings.enableHighCpuPopup"
+        v-if="shouldShowAlert"
         :alertProcesses="alertProcesses"
         :getProcessDuration="getProcessDuration"
         :terminateProcess="terminateProcess"
@@ -120,6 +120,7 @@ function handleAutoRefreshChange(enabled: boolean, interval: number) {
 // 监控进程变化，检查高CPU使用率
 watch(processes, (newProcesses) => {
   if (newProcesses.length > 0) {
+    console.log("xxx");
     monitorHighCpu(newProcesses, settings.value);
   }
 }, {deep: true});
