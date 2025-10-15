@@ -19,9 +19,9 @@ const defaultSettings: AppSettings = {
     trayShowPercentage: true,
     trayDisplayMode: 'warning-only',
     highCpuAlert: true,
-    highCpuThreshold: 100,
-    highCpuDuration: 60 * 5, // 5分钟
-    enableHighCpuPopup: false // 默认关闭弹窗
+    highCpuThreshold: 95,
+    highCpuDuration: 10,
+    enableHighCpuPopup: false,
 };
 
 const SETTINGS_KEY = 'cpu-monitor-settings';
