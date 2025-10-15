@@ -7,7 +7,6 @@ export interface RustAppSettings {
     tray_show_process: boolean;
     tray_show_percentage: boolean;
     tray_display_mode: string;
-    high_cpu_alert: boolean;
     high_cpu_threshold: number;
     high_cpu_duration: number;
     enable_high_cpu_popup: boolean;
@@ -22,7 +21,6 @@ export function useUpdateSettings() {
             tray_show_process: settings.trayShowProcess,
             tray_show_percentage: settings.trayShowPercentage,
             tray_display_mode: settings.trayDisplayMode,
-            high_cpu_alert: settings.highCpuAlert,
             high_cpu_threshold: settings.highCpuThreshold,
             high_cpu_duration: settings.highCpuDuration,
             enable_high_cpu_popup: settings.enableHighCpuPopup

@@ -44,45 +44,7 @@
             <option value="always">最高CPU占用进程</option>
           </select>
         </div>
-
-        <div class="sub-settings">
-          <div class="setting-item">
-            <label class="setting-label">
-              <input
-                  type="checkbox"
-                  v-model="settings.trayShowProcess"
-              />
-              显示进程名称
-            </label>
-          </div>
-
-          <div class="setting-item">
-            <label class="setting-label">
-              <input
-                  type="checkbox"
-                  v-model="settings.trayShowPercentage"
-              />
-              显示CPU百分比
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <!-- 高CPU警告设置 -->
-      <div class="setting-group">
-        <h4>⚠️ 高CPU使用率警告</h4>
-
-        <div class="setting-item">
-          <label class="setting-label">
-            <input
-                type="checkbox"
-                v-model="settings.highCpuAlert"
-            />
-            启用高CPU警告
-          </label>
-        </div>
-
-        <div v-if="settings.highCpuAlert" class="sub-settings">
+        <div>
           <div class="setting-item">
             <label class="setting-label">CPU阈值（%）</label>
             <input
@@ -101,7 +63,7 @@
             />
           </div>
 
-          <div class="setting-item">
+          <div v-if="false" class="setting-item">
             <label class="setting-label">
               <input
                   type="checkbox"
@@ -116,10 +78,10 @@
 
     <div class="settings-footer">
       <button @click="resetSettings" class="reset-btn">
-        🔄 重置为默认
+        🔄 重置默认
       </button>
       <button @click="$emit('close')" class="save-btn">
-        ✅ 保存并关闭
+        ✅ 保存
       </button>
     </div>
   </div>

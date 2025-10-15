@@ -1,7 +1,7 @@
 <template>
   <div class="high-cpu-alert">
     <div class="alert-header">
-      <h4>⚠️ 高CPU使用率警告</h4>
+      <h4>⚠️ 高CPU占用警告</h4>
       <button @click="clearAllAlerts" class="close-btn" title="关闭所有警告">✕</button>
     </div>
 
@@ -12,7 +12,7 @@
           检测到 {{ alertProcesses.length }} 个高CPU进程
         </div>
         <span style="flex: 1;"></span>
-        <button @click="disablePopup" class="dismiss-btn">
+        <button v-if="false" @click="disablePopup" class="dismiss-btn">
           关闭弹窗
         </button>
       </div>

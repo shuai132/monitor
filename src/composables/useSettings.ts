@@ -6,7 +6,6 @@ export interface AppSettings {
     trayShowProcess: boolean;
     trayShowPercentage: boolean;
     trayDisplayMode: "always" | "warning-only";
-    highCpuAlert: boolean;
     highCpuThreshold: number; // 百分比
     highCpuDuration: number; // 秒
     enableHighCpuPopup: boolean; // 是否启用高CPU警告弹窗
@@ -18,7 +17,6 @@ const defaultSettings: AppSettings = {
     trayShowProcess: true,
     trayShowPercentage: true,
     trayDisplayMode: 'warning-only',
-    highCpuAlert: true,
     highCpuThreshold: 95,
     highCpuDuration: 10,
     enableHighCpuPopup: false,

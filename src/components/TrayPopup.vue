@@ -47,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, ref, watch} from 'vue';
+import {computed, onMounted, onUnmounted, ref} from 'vue';
 import {type ProcessInfo, useProcesses} from '../composables/useProcesses';
 import {useSettings} from '../composables/useSettings';
 import {useHighCpuMonitor} from '../composables/useHighCpuMonitor';
@@ -75,7 +75,6 @@ const {
 const {
   alertProcesses,
   shouldShowAlert,
-  monitorHighCpu,
   clearAlert
 } = useHighCpuMonitor();
 
@@ -159,13 +158,6 @@ async function handleAlertForceKill(pid: number) {
 
   clearAlert(pid);
 }
-
-// 监控进程变化，检查高CPU使用率
-watch(processes, (newProcesses) => {
-  if (newProcesses.length > 0) {
-    monitorHighCpu(newProcesses, settings.value);
-  }
-}, {deep: true});
 
 onMounted(() => {
   startAutoRefresh();

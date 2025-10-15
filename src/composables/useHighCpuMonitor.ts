@@ -19,12 +19,6 @@ export function useHighCpuMonitor() {
 
     // 监控高CPU使用率进程
     function monitorHighCpu(processes: ProcessInfo[], settings: AppSettings) {
-        if (!settings.highCpuAlert) {
-            highCpuProcesses.value.clear();
-            alertProcesses.value = [];
-            return;
-        }
-
         const currentTimeSec = Math.floor(Date.now() / 1000);
         const thresholdMs = settings.highCpuDuration;
 

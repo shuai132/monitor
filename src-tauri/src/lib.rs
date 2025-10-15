@@ -22,7 +22,6 @@ pub struct AppSettings {
     pub tray_show_process: bool,
     pub tray_show_percentage: bool,
     pub tray_display_mode: String, // "always" or "warning-only"
-    pub high_cpu_alert: bool,
     pub high_cpu_threshold: f32,
     pub high_cpu_duration: u32,
     pub enable_high_cpu_popup: bool,
@@ -36,7 +35,6 @@ impl Default for AppSettings {
             tray_show_process: true,
             tray_show_percentage: true,
             tray_display_mode: "always".to_string(),
-            high_cpu_alert: true,
             high_cpu_threshold: 100.0,
             high_cpu_duration: 30, // 改为30秒
             enable_high_cpu_popup: false,
