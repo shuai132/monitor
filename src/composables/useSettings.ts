@@ -13,7 +13,7 @@ export interface AppSettings {
 
 const defaultSettings: AppSettings = {
     autoRefresh: true,
-    refreshInterval: 2,
+    refreshInterval: 5,
     trayShowProcess: true,
     trayShowPercentage: true,
     trayDisplayMode: 'warning-only',

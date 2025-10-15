@@ -47,14 +47,28 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onMounted, onUnmounted, ref} from 'vue';
+import {computed, onMounted, ref, watch} from 'vue';
 import {type ProcessInfo, useProcesses} from '../composables/useProcesses';
 import {useSettings} from '../composables/useSettings';
 import {useHighCpuMonitor} from '../composables/useHighCpuMonitor';
 import ProcessList from './ProcessList.vue';
+import {usePageVisibility} from '../composables/usePageVisibility';
 
 // 设置管理
 const {settings} = useSettings();
+
+const {pageVisible} = usePageVisibility();
+watch(pageVisible, (v) => {
+  if (v) {
+    startAutoRefresh();
+  } else {
+    stopAutoRefresh();
+  }
+});
+
+onMounted(() => {
+  startAutoRefresh();
+});
 
 // 进程管理
 const {
@@ -159,13 +173,6 @@ async function handleAlertForceKill(pid: number) {
   clearAlert(pid);
 }
 
-onMounted(() => {
-  startAutoRefresh();
-});
-
-onUnmounted(() => {
-  stopAutoRefresh();
-});
 </script>
 
 <style scoped>

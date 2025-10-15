@@ -422,7 +422,7 @@ pub fn run() {
             app.manage(app_state);
 
             let _tray = TrayIconBuilder::with_id("main-tray")
-                .tooltip("CPU监控器 - 加载中...")
+                .tooltip("加载中...")
                 .icon(app.default_window_icon().unwrap().clone())
                 .on_tray_icon_event(move |tray, event| {
                     match event {

@@ -134,9 +134,10 @@ export function useProcesses(settings?: Ref<AppSettings>) {
     }
 
     function startAutoRefresh() {
-        getTopProcesses();
+        if (refreshInterval) return;
+        getTopProcesses().catch();
         if (settings?.value.autoRefresh) {
-            const interval = (settings?.value.refreshInterval || 2) * 1000;
+            const interval = 2 * 1000;
             refreshInterval = setInterval(getTopProcesses, interval);
         }
     }
