@@ -71,7 +71,7 @@ import {onMounted, onUnmounted, ref, watch} from 'vue';
 import {useProcesses} from '../composables/useProcesses';
 import {useSettings} from '../composables/useSettings';
 import {useHighCpuMonitor} from '../composables/useHighCpuMonitor';
-import {useTrayUpdater} from '../composables/useTrayUpdater';
+import {useUpdateSettings} from '../composables/useUpdateSettings';
 import ProcessList from './ProcessList.vue';
 import SettingsPanel from './SettingsPanel.vue';
 import HighCpuAlert from './HighCpuAlert.vue';
@@ -110,7 +110,7 @@ const {
 } = useHighCpuMonitor();
 
 // 托盘更新器
-const {updateTrayDisplay} = useTrayUpdater();
+const {updateSettings} = useUpdateSettings();
 
 // 处理设置变化
 function handleAutoRefreshChange(enabled: boolean, interval: number) {
@@ -120,18 +120,17 @@ function handleAutoRefreshChange(enabled: boolean, interval: number) {
 // 监控进程变化，检查高CPU使用率
 watch(processes, (newProcesses) => {
   if (newProcesses.length > 0) {
-    console.log("xxx");
     monitorHighCpu(newProcesses, settings.value);
   }
 }, {deep: true});
 
-// 监听设置变化，立即更新托盘显示
+// 监听设置变化，立即更新设置
 watch(settings, async (newSettings) => {
   console.log("settings: ", newSettings)
   try {
-    await updateTrayDisplay(newSettings);
+    await updateSettings(newSettings);
   } catch (error) {
-    console.error('更新托盘显示失败:', error);
+    console.error('更新设置失败:', error);
   }
 }, {deep: true});
 
@@ -164,7 +163,7 @@ async function exitApp() {
 // 初始化时同步设置到后端
 async function initializeBackendSettings() {
   try {
-    await updateTrayDisplay(settings.value);
+    await updateSettings(settings.value);
     console.log('已将前端设置同步到后端:', settings.value);
   } catch (error) {
     console.error('初始化后端设置失败:', error);

@@ -25,8 +25,8 @@ export function useHighCpuMonitor() {
             return;
         }
 
-        const currentTime = Date.now();
-        const thresholdMs = settings.highCpuDuration * 1000; // 转换为毫秒
+        const currentTimeSec = Math.floor(Date.now() / 1000);
+        const thresholdMs = settings.highCpuDuration;
 
         // 检查当前高CPU进程
         const currentHighCpuPids = new Set<number>();
@@ -36,16 +36,14 @@ export function useHighCpuMonitor() {
                 currentHighCpuPids.add(process.pid);
 
                 if (highCpuProcesses.value.has(process.pid)) {
-                    // 更新现有进程的持续时间
                     const existing = highCpuProcesses.value.get(process.pid)!;
-                    existing.process = process; // 更新进程信息
-                    existing.duration += (currentTime - existing.startTime) / 1000; // 转换为秒
+                    existing.process = process;
+                    existing.duration += (currentTimeSec - existing.startTime);
                 } else {
-                    // 新的高CPU进程
                     highCpuProcesses.value.set(process.pid, {
                         process,
-                        startTime: currentTime,
-                        lastTime: currentTime,
+                        startTime: currentTimeSec,
+                        lastTime: currentTimeSec,
                         duration: 0
                     });
                 }
@@ -61,15 +59,45 @@ export function useHighCpuMonitor() {
 
         // 检查哪些进程需要警告
         const newAlertProcesses: ProcessInfo[] = [];
+        let i = 0;
         for (const [, highCpuProcess] of highCpuProcesses.value.entries()) {
-            const durationMs = currentTime - highCpuProcess.startTime;
+            const durationMs = currentTimeSec - highCpuProcess.startTime;
+            const p = highCpuProcess.process;
+            console.log("high cpu: ", i++, p.name, p.cpu_usage, durationMs, thresholdMs);
             if (durationMs >= thresholdMs) {
                 newAlertProcesses.push(highCpuProcess.process);
             }
         }
 
+        function updateTrayTitleWithProcess(p: ProcessInfo) {
+            let title = p.name;
+            if (title.length > 12) {
+                title = title.substring(0, 9);
+                title += "...";
+            }
+            title += `:${Math.floor(p.cpu_usage)}%`;
+            invoke('update_tray_title', {tooltip: "", title: title}).catch();
+        }
+
+        console.log("newAlertProcesses:", newAlertProcesses);
+        switch (settings.trayDisplayMode) {
+            case "always": {
+                updateTrayTitleWithProcess(processes[0]);
+            }
+                break;
+            case "warning-only": {
+                if (newAlertProcesses.length > 0) {
+                    updateTrayTitleWithProcess(newAlertProcesses[0]);
+
+                } else {
+                    invoke('update_tray_title', {tooltip: "", title: ""}).catch();
+                }
+            }
+                break;
+        }
+
         alertProcesses.value = newAlertProcesses;
-        if (newAlertProcesses.length > 0) {
+        if (newAlertProcesses.length > 0 && settings.enableHighCpuPopup) {
             invoke("show_high_cpu_alert").catch();
         } else {
             invoke("hide_high_cpu_alert").catch();

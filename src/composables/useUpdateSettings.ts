@@ -13,7 +13,7 @@ export interface RustAppSettings {
     enable_high_cpu_popup: boolean;
 }
 
-export function useTrayUpdater() {
+export function useUpdateSettings() {
     // 将前端设置转换为Rust后端需要的格式
     function convertToRustSettings(settings: AppSettings): RustAppSettings {
         return {
@@ -29,18 +29,18 @@ export function useTrayUpdater() {
         };
     }
 
-    // 更新托盘显示
-    async function updateTrayDisplay(settings: AppSettings): Promise<void> {
+    // 更新设置
+    async function updateSettings(settings: AppSettings): Promise<void> {
         try {
             const rustSettings = convertToRustSettings(settings);
-            await invoke('update_tray_with_settings', {settings: rustSettings});
+            await invoke('update_settings', {settings: rustSettings});
         } catch (error) {
-            console.error('更新托盘显示失败:', error);
+            console.error('更新设置失败:', error);
             throw error;
         }
     }
 
     return {
-        updateTrayDisplay
+        updateSettings
     };
 }

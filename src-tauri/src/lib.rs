@@ -7,10 +7,6 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, LogicalPosition, Manager, Position, State, WindowEvent,
 };
-use tokio::time::interval;
-
-// 常量定义
-const TRAY_TITLE_DEFAULT: &str = "";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProcessInfo {
@@ -52,7 +48,6 @@ impl Default for AppSettings {
 pub struct AppState {
     pub settings: Arc<RwLock<AppSettings>>,
 }
-
 
 #[tauri::command]
 async fn get_top_cpu_processes() -> Result<Vec<ProcessInfo>, String> {
@@ -124,10 +119,7 @@ async fn restart_process(process_name: String) -> Result<String, String> {
     // 注意：重启进程在macOS上比较复杂，这里提供基本实现
 
     // 首先尝试通过 open 命令启动应用程序
-    let result = Command::new("open")
-        .arg("-a")
-        .arg(&process_name)
-        .output();
+    let result = Command::new("open").arg("-a").arg(&process_name).output();
 
     match result {
         Ok(output) => {
@@ -138,12 +130,15 @@ async fn restart_process(process_name: String) -> Result<String, String> {
                 Err(format!("重启失败: {}", error))
             }
         }
-        Err(e) => Err(format!("无法重启进程 {}: {}", process_name, e))
+        Err(e) => Err(format!("无法重启进程 {}: {}", process_name, e)),
     }
 }
 
 #[tauri::command]
-async fn show_high_cpu_alert(app_handle: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+async fn show_high_cpu_alert(
+    app_handle: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
     // 首先检查是否启用了高CPU警告弹窗
     let settings = if let Ok(settings) = state.settings.read() {
         settings.clone()
@@ -165,11 +160,17 @@ async fn show_high_cpu_alert(app_handle: AppHandle, state: State<'_, AppState>) 
             let (screen_width, screen_height) = get_screen_size();
             let popup_width = 420.0;
             let popup_height = 200.0;
-            let (x, y) = calculate_tray_popup_position(screen_width, screen_height, popup_width, popup_height);
+            let (x, y) = calculate_tray_popup_position(
+                screen_width,
+                screen_height,
+                popup_width,
+                popup_height,
+            );
             let alert_x = x + 0.0;
             let alert_y = y + 10.0;
 
-            let _ = alert_window.set_position(Position::Logical(LogicalPosition::new(alert_x, alert_y)));
+            let _ = alert_window
+                .set_position(Position::Logical(LogicalPosition::new(alert_x, alert_y)));
             let _ = alert_window.show();
         }
     } else {
@@ -190,19 +191,22 @@ async fn hide_high_cpu_alert(app_handle: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn update_tray_with_settings(app_handle: AppHandle, settings: AppSettings, state: State<'_, AppState>) -> Result<(), String> {
-    println!("update_tray_with_settings: {:?}", settings);
+async fn update_settings(settings: AppSettings, state: State<'_, AppState>) -> Result<(), String> {
+    println!("update_settings: {:?}", settings);
 
     // 更新全局设置状态
     if let Ok(mut global_settings) = state.settings.write() {
         *global_settings = settings.clone();
     }
 
-    // 立即更新托盘显示
-    if let Ok(processes) = get_top_cpu_processes().await {
-        if let Some(tray) = app_handle.tray_by_id("main-tray") {
-            update_tray_display(&tray, &processes, &settings).map_err(|e| e.to_string())?;
-        }
+    Ok(())
+}
+
+#[tauri::command]
+fn update_tray_title(app_handle: AppHandle, tooltip: String, title: String) -> Result<(), String> {
+    if let Some(tray) = app_handle.tray_by_id("main-tray") {
+        let _ = tray.set_tooltip(Some(&tooltip));
+        let _ = tray.set_title(Some(&title));
     }
     Ok(())
 }
@@ -212,102 +216,6 @@ async fn exit_app(app_handle: AppHandle) -> Result<(), String> {
     println!("正在退出应用程序...");
     app_handle.exit(0);
     Ok(())
-}
-
-fn update_tray_display(tray: &tauri::tray::TrayIcon, processes: &[ProcessInfo], settings: &AppSettings) -> Result<(), Box<dyn std::error::Error>> {
-    println!("update_tray_display: {:?}", settings);
-    let tooltip_text = generate_tooltip_text(processes);
-    tray.set_tooltip(Some(tooltip_text))?;
-
-    match settings.tray_display_mode.as_str() {
-        "always" => {
-            // 总是显示最高CPU进程
-            if let Some(top_process) = processes.first() {
-                let mut title_parts = Vec::new();
-
-                if settings.tray_show_process {
-                    // 限制进程名称长度，避免托盘标题过长
-                    let process_name = if top_process.name.len() > 12 {
-                        format!("{}...", &top_process.name[..9])
-                    } else {
-                        top_process.name.clone()
-                    };
-                    title_parts.push(process_name);
-                }
-
-                if settings.tray_show_percentage {
-                    title_parts.push(format!("{:.1}%", top_process.cpu_usage));
-                }
-
-                let title = if title_parts.is_empty() {
-                    TRAY_TITLE_DEFAULT.to_string()
-                } else {
-                    title_parts.join(": ")
-                };
-
-                tray.set_title(Some(&title))?;
-            } else {
-                tray.set_title(Some(TRAY_TITLE_DEFAULT))?;
-            }
-        }
-        "warning-only" => {
-            // 仅在警告时显示进程
-            if let Some(top_process) = processes.first() {
-                if settings.high_cpu_alert && top_process.cpu_usage >= settings.high_cpu_threshold {
-                    // 有警告时显示最高CPU进程
-                    let process_name = if top_process.name.len() > 12 {
-                        format!("{}...", &top_process.name[..9])
-                    } else {
-                        top_process.name.clone()
-                    };
-                    let title = format!("{}: {:.1}%", process_name, top_process.cpu_usage);
-                    tray.set_title(Some(&title))?;
-                } else {
-                    // 无警告时显示默认标题
-                    tray.set_title(Some(TRAY_TITLE_DEFAULT))?;
-                }
-            } else {
-                // 没有进程数据时显示默认标题
-                tray.set_title(Some(TRAY_TITLE_DEFAULT))?;
-            }
-        }
-        _ => {
-            // 默认行为，兼容旧设置
-            if let Some(top_process) = processes.first() {
-                let process_name = if top_process.name.len() > 12 {
-                    format!("{}...", &top_process.name[..9])
-                } else {
-                    top_process.name.clone()
-                };
-                let title = format!("{}: {:.1}%", process_name, top_process.cpu_usage);
-                tray.set_title(Some(&title))?;
-            } else {
-                tray.set_title(Some(TRAY_TITLE_DEFAULT))?;
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn generate_tooltip_text(processes: &[ProcessInfo]) -> String {
-    let mut tooltip = "🖥️ CPU监控器 - 前10进程:\n\n".to_string();
-
-    for (i, process) in processes.iter().enumerate() {
-        tooltip.push_str(&format!(
-            "{}. {} ({}): {:.1}%\n",
-            i + 1,
-            process.name,
-            process.pid,
-            process.cpu_usage
-        ));
-    }
-
-    if processes.is_empty() {
-        tooltip.push_str("暂无进程数据");
-    }
-
-    tooltip
 }
 
 fn create_tray_popup(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
@@ -321,22 +229,27 @@ fn create_tray_popup(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let (screen_width, screen_height) = get_screen_size();
 
     // 获取托盘位置并计算弹窗位置
-    let (x, y) = calculate_tray_popup_position(screen_width, screen_height, popup_width, popup_height);
+    let (x, y) =
+        calculate_tray_popup_position(screen_width, screen_height, popup_width, popup_height);
 
-    println!("Screen size: {}x{}, Popup position: ({}, {})", screen_width, screen_height, x, y);
+    println!(
+        "Screen size: {}x{}, Popup position: ({}, {})",
+        screen_width, screen_height, x, y
+    );
 
-    let window = WebviewWindowBuilder::new(&app, "tray-popup", WebviewUrl::App("index.html".into()))
-        .title("CPU监控器 - 托盘弹窗")
-        .inner_size(popup_width, popup_height)
-        .position(x, y)
-        .resizable(false)
-        .maximizable(false)
-        .minimizable(false)
-        .skip_taskbar(true)
-        .always_on_top(true)
-        .decorations(false)  // 无边框窗口
-        .shadow(true)        // 添加阴影
-        .build()?;
+    let window =
+        WebviewWindowBuilder::new(&app, "tray-popup", WebviewUrl::App("index.html".into()))
+            .title("CPU监控器 - 托盘弹窗")
+            .inner_size(popup_width, popup_height)
+            .position(x, y)
+            .resizable(false)
+            .maximizable(false)
+            .minimizable(false)
+            .skip_taskbar(true)
+            .always_on_top(true)
+            .decorations(false) // 无边框窗口
+            .shadow(true) // 添加阴影
+            .build()?;
 
     // 暂时移除原生圆角设置，避免运行时错误
     // 圆角效果将通过CSS实现
@@ -363,26 +276,28 @@ fn create_high_cpu_alert(app: AppHandle) -> Result<(), Box<dyn std::error::Error
     let (screen_width, screen_height) = get_screen_size();
 
     // 计算高CPU警告弹窗位置（稍微偏移，避免与托盘弹窗重叠）
-    let (x, y) = calculate_tray_popup_position(screen_width, screen_height, popup_width, popup_height);
+    let (x, y) =
+        calculate_tray_popup_position(screen_width, screen_height, popup_width, popup_height);
     let alert_x = x + 0.0;
     let alert_y = y + 10.0;
 
     println!("High CPU Alert position: ({}, {})", alert_x, alert_y);
 
-    let window = WebviewWindowBuilder::new(&app, "high-cpu-alert", WebviewUrl::App("index.html".into()))
-        .title("CPU监控器 - 高CPU警告")
-        .inner_size(popup_width, popup_height)
-        .position(alert_x, alert_y)
-        .resizable(false)
-        .maximizable(false)
-        .minimizable(false)
-        .skip_taskbar(true)
-        .always_on_top(true)
-        .decorations(false)  // 无边框窗口
-        .shadow(true)        // 添加阴影
-        .focusable(false)
-        .focused(false)
-        .build()?;
+    let window =
+        WebviewWindowBuilder::new(&app, "high-cpu-alert", WebviewUrl::App("index.html".into()))
+            .title("CPU监控器 - 高CPU警告")
+            .inner_size(popup_width, popup_height)
+            .position(alert_x, alert_y)
+            .resizable(false)
+            .maximizable(false)
+            .minimizable(false)
+            .skip_taskbar(true)
+            .always_on_top(true)
+            .decorations(false) // 无边框窗口
+            .shadow(true) // 添加阴影
+            .focusable(false)
+            .focused(false)
+            .build()?;
 
     // 添加失焦隐藏功能
     let window_clone = window.clone();
@@ -417,12 +332,18 @@ fn get_tray_icon_position() -> Option<(f64, f64)> {
     None
 }
 
-fn calculate_tray_popup_position(screen_width: f64, screen_height: f64, popup_width: f64, popup_height: f64) -> (f64, f64) {
+fn calculate_tray_popup_position(
+    screen_width: f64,
+    screen_height: f64,
+    popup_width: f64,
+    popup_height: f64,
+) -> (f64, f64) {
     let margin = 8.0;
     let menu_bar_height = 24.0;
 
     // 尝试获取托盘图标位置
-    let (tray_x, _tray_y) = get_tray_icon_position().unwrap_or((screen_width - 50.0, menu_bar_height / 2.0));
+    let (tray_x, _tray_y) =
+        get_tray_icon_position().unwrap_or((screen_width - 50.0, menu_bar_height / 2.0));
 
     // 计算弹窗的Y位置 - 紧贴菜单栏下方
     let y = menu_bar_height + margin;
@@ -440,7 +361,10 @@ fn calculate_tray_popup_position(screen_width: f64, screen_height: f64, popup_wi
     let x = x.max(margin).min(screen_width - popup_width - margin);
     let y = y.max(margin).min(screen_height - popup_height - margin);
 
-    println!("托盘位置估算: ({}, {}), 弹窗最终位置: ({}, {})", tray_x, _tray_y, x, y);
+    println!(
+        "托盘位置估算: ({}, {}), 弹窗最终位置: ({}, {})",
+        tray_x, _tray_y, x, y
+    );
 
     (x, y)
 }
@@ -466,29 +390,6 @@ fn get_screen_size() -> (f64, f64) {
     (1920.0, 1080.0)
 }
 
-async fn update_tray_info(app_handle: AppHandle, app_state: Arc<RwLock<AppSettings>>) {
-    let mut interval = interval(Duration::from_secs(3));
-
-    loop {
-        interval.tick().await;
-
-        if let Ok(processes) = get_top_cpu_processes().await {
-            if let Some(tray) = app_handle.tray_by_id("main-tray") {
-                // 读取当前的设置状态
-                let current_settings = if let Ok(settings) = app_state.read() {
-                    settings.clone()
-                } else {
-                    // 如果读取失败，使用默认设置
-                    AppSettings::default()
-                };
-
-                // 使用当前设置更新托盘显示
-                let _ = update_tray_display(&tray, &processes, &current_settings);
-            }
-        }
-    }
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -500,12 +401,11 @@ pub fn run() {
             restart_process,
             show_high_cpu_alert,
             hide_high_cpu_alert,
-            update_tray_with_settings,
+            update_settings,
+            update_tray_title,
             exit_app
         ])
         .setup(|app| {
-            let app_handle = app.app_handle().clone();
-
             // 在macOS上隐藏Dock图标
             #[cfg(target_os = "macos")]
             {
@@ -549,9 +449,16 @@ pub fn run() {
                                     let (screen_width, screen_height) = get_screen_size();
                                     let popup_width = 420.0;
                                     let popup_height = 600.0;
-                                    let (x, y) = calculate_tray_popup_position(screen_width, screen_height, popup_width, popup_height);
+                                    let (x, y) = calculate_tray_popup_position(
+                                        screen_width,
+                                        screen_height,
+                                        popup_width,
+                                        popup_height,
+                                    );
 
-                                    let _ = popup_window.set_position(Position::Logical(LogicalPosition::new(x, y)));
+                                    let _ = popup_window.set_position(Position::Logical(
+                                        LogicalPosition::new(x, y),
+                                    ));
                                     let _ = popup_window.show();
                                     let _ = popup_window.set_focus();
                                     println!("显示托盘弹窗");
@@ -590,17 +497,6 @@ pub fn run() {
                     }
                 })
                 .build(app)?;
-
-            // 延迟启动后台任务，避免初始化问题
-            let app_handle_clone = app_handle.clone();
-            let app_state_clone = app.state::<AppState>();
-            let settings_arc = Arc::clone(&app_state_clone.settings);
-
-            tauri::async_runtime::spawn(async move {
-                // 等待应用完全启动
-                tokio::time::sleep(Duration::from_secs(2)).await;
-                update_tray_info(app_handle_clone, settings_arc).await;
-            });
 
             // 隐藏主窗口，只在托盘中运行
             if let Some(window) = app.get_webview_window("main") {
