@@ -73,6 +73,7 @@ export function useHighCpuMonitor() {
             invoke('update_tray_title', {tooltip: "", title: title}).catch();
         }
 
+        newAlertProcesses.sort((p1, p2) => p2.cpu_usage - p1.cpu_usage);
         console.log("newAlertProcesses:", newAlertProcesses);
         switch (settings.trayDisplayMode) {
             case "always": {
@@ -82,7 +83,6 @@ export function useHighCpuMonitor() {
             case "warning-only": {
                 if (newAlertProcesses.length > 0) {
                     updateTrayTitleWithProcess(newAlertProcesses[0]);
-
                 } else {
                     invoke('update_tray_title', {tooltip: "", title: ""}).catch();
                 }
