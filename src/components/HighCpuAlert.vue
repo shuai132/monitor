@@ -23,6 +23,7 @@
           :isPinnedProcess="isPinnedAlertProcess"
           :getRealRank="getRealAlertRank"
           :getCpuUsageClass="getCpuUsageClass"
+          :formatMemoryUsage="props.formatMemoryUsage"
           :pinProcess="pinAlertProcess"
           :terminateProcess="handleTerminateProcess"
           :forceKillProcess="handleForceKillProcess"
@@ -44,6 +45,7 @@ interface Props {
   forceKillProcess: (pid: number) => Promise<void>;
   restartProcess: (processName: string) => Promise<void>;
   getCpuUsageClass: (cpuUsage: number) => string;
+  formatMemoryUsage: (bytes: number) => string;
 }
 
 interface Emits {

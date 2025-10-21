@@ -10,7 +10,7 @@
       }"
         @click="pinProcess(process, index)"
     >
-      <!-- 第一行：进程名 + CPU百分比和进度条 -->
+      <!-- 第一行：进程名 + 内存 + CPU百分比和进度条 -->
       <div class="process-row-1">
         <div class="process-name-section">
           <div class="rank-badge">
@@ -18,6 +18,12 @@
           </div>
           <div class="process-name" :title="process.name">
             {{ process.name }}
+          </div>
+        </div>
+
+        <div class="memory-section">
+          <div class="memory-usage">
+            {{ formatMemoryUsage(process.memory_usage) }}
           </div>
         </div>
 
@@ -77,6 +83,7 @@ interface Props {
   isPinnedProcess: (process: ProcessInfo) => boolean;
   getRealRank: (process: ProcessInfo, index: number) => number;
   getCpuUsageClass: (cpuUsage: number) => string;
+  formatMemoryUsage: (bytes: number) => string;
   pinProcess: (process: ProcessInfo, index: number) => void;
   terminateProcess: (pid: number) => Promise<void>;
   forceKillProcess: (pid: number) => Promise<void>;
@@ -162,6 +169,21 @@ defineProps<Props>();
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+}
+
+.memory-section {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.memory-usage {
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  min-width: 70px;
+  text-align: right;
+  margin-right: 16px;
 }
 
 .cpu-section {

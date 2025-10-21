@@ -5,6 +5,7 @@ import type {AppSettings} from "./useSettings";
 export interface ProcessInfo {
     name: string;
     pid: number;
+    memory_usage: number;
     cpu_usage: number;
 }
 
@@ -133,6 +134,14 @@ export function useProcesses(settings?: Ref<AppSettings>) {
         return 'low-cpu';
     }
 
+    function formatMemoryUsage(bytes: number): string {
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        if (bytes === 0) return '0 B';
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        const size = bytes / Math.pow(1024, i);
+        return `${size.toFixed(1)} ${sizes[i]}`;
+    }
+
     function startAutoRefresh() {
         if (refreshInterval) return;
         getTopProcesses().catch();
@@ -190,6 +199,7 @@ export function useProcesses(settings?: Ref<AppSettings>) {
         forceKillProcess,
         restartProcess,
         getCpuUsageClass,
+        formatMemoryUsage,
         startAutoRefresh,
         stopAutoRefresh,
         updateAutoRefresh

@@ -12,6 +12,7 @@ use tauri::{
 pub struct ProcessInfo {
     pub name: String,
     pub pid: u32,
+    pub memory_usage: u64,
     pub cpu_usage: f32,
 }
 
@@ -62,6 +63,7 @@ async fn get_top_cpu_processes() -> Result<Vec<ProcessInfo>, String> {
         .map(|(pid, process)| ProcessInfo {
             name: process.name().to_str().unwrap().to_owned(),
             pid: pid.as_u32(),
+            memory_usage: process.memory(),
             cpu_usage: process.cpu_usage(),
         })
         .collect();

@@ -31,6 +31,7 @@
         :forceKillProcess="forceKillProcess"
         :restartProcess="restartProcess"
         :getCpuUsageClass="getCpuUsageClass"
+        :formatMemoryUsage="formatMemoryUsage"
         @clearAlert="clearAlert"
         @clearAllAlerts="clearAllAlerts"
         @disablePopup="disablePopup"
@@ -57,6 +58,7 @@
           :isPinnedProcess="isPinnedProcess"
           :getRealRank="getRealRank"
           :getCpuUsageClass="getCpuUsageClass"
+          :formatMemoryUsage="formatMemoryUsage"
           :pinProcess="pinProcess"
           :terminateProcess="terminateProcess"
           :forceKillProcess="forceKillProcess"
@@ -89,6 +91,7 @@ const {
   isPinnedProcess,
   getRealRank,
   getCpuUsageClass,
+  formatMemoryUsage,
   pinProcess,
   terminateProcess,
   forceKillProcess,
